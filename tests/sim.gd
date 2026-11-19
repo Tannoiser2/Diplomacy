@@ -10,6 +10,11 @@ func _init() -> void:
 	var dettagli := args.size() > 2
 	var vittorie := [0, 0, 0, 0, 0, 0, 0]
 	var pareggi := 0
+	var a1907 := [0, 0, 0, 0, 0, 0, 0]
+	var morti1907 := [0, 0, 0, 0, 0, 0, 0]
+	var somma_pugnalate := 0
+	var somma_traditi := 0
+	var cause := {}
 	var t0 := Time.get_ticks_msec()
 	for n in partite:
 		var g := DPGame.new()
@@ -19,6 +24,12 @@ func _init() -> void:
 		while not g.finita and g.anno <= 1930:
 			var t1 := Time.get_ticks_msec()
 			c.apri_fase()
+			if g.fase == DPGame.PRIMAVERA and g.anno >= 1908:
+				c.proponi_pareggio(-1)
+				c.voti.erase(-1)
+				if c.esito_pareggio() == 1:
+					g.pareggio()
+					break
 			for p in 7:
 				if g.deve_ordinare(p):
 					g.imposta_ordini(p, c.ordini_ia(p))
@@ -28,11 +39,13 @@ func _init() -> void:
 			max_ms = maxi(max_ms, Time.get_ticks_msec() - t1)
 			if dettagli and (g.fase == DPGame.PRIMAVERA or g.finita):
 				print(g.anno - 1, " ", g.st.conta_centri())
-			if g.fase == DPGame.PRIMAVERA and g.anno >= 1908 and not g.finita:
-				c.proponi_pareggio(-1)
-				c.voti.erase(-1)
-				if c.esito_pareggio() == 1:
-					g.pareggio()
+			if g.fase == DPGame.PRIMAVERA and g.anno == 1908 and inverno:
+				var nc := g.st.conta_centri()
+				for p in 7:
+					a1907[p] += nc[p]
+					if nc[p] == 0:
+						morti1907[p] += 1
+
 		var tipi := {}
 		for m in c.messaggi:
 			var k: String = m["tipo"]
@@ -46,7 +59,12 @@ func _init() -> void:
 		for p in 7:
 			car.append(c.dip[p].carattere)
 			for r in c.dip[p].diario:
+				if (r as String).contains("TRADITO"):
+					somma_traditi += 1
+					var causa := (r as String).get_slice("(", 1).trim_suffix(")")
+					cause[causa] = cause.get(causa, 0) + 1
 				if (r as String).contains("PUGNALO"):
+					somma_pugnalate += 1
 					pugnalate += 1
 					if dettagli:
 						print("  ", DPMap.POTENZE_BREVI[p], " ", r)
@@ -62,4 +80,6 @@ func _init() -> void:
 			for p in 7:
 				print("  ", DPMap.POTENZE_BREVI[p], ": ", c.dip[p].apertura)
 	print("vittorie %s, pareggi %d, secondi %.1f" % [str(vittorie), pareggi, (Time.get_ticks_msec() - t0) / 1000.0])
+	print("tradimenti per causa: ", cause)
+	print("centri medi a fine 1907 %s, eliminati entro il 1907 %s, pugnalate %d, tradimenti subiti %d" % [str(a1907.map(func(x): return snappedf(float(x) / partite, 0.1))), str(morti1907), somma_pugnalate, somma_traditi])
 	quit()

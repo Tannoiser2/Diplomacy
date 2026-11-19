@@ -161,8 +161,12 @@ func candidato(st: DPState, p: int, val: Array, ost: PackedFloat32Array, temp: f
 				continue                      # c'è una propria unità che resta
 			if occ >= 0 and occ != p:
 				# attaccare un'unità: ha senso verso i nemici, mai verso gli amici
+				if ost[occ] < AMICO:
+					continue
 				s *= _freno(ost[occ])
-			elif st.sc[d] >= 0 and st.sc[d] != p:
+			elif DPMap.centro[d] == 1 and st.sc[d] >= 0 and st.sc[d] != p:
+				if ost[st.sc[d]] < AMICO:
+					continue
 				s *= _freno(ost[st.sc[d]])
 			if vietate.has(d):
 				s *= float(vietate[d])
@@ -172,8 +176,12 @@ func candidato(st: DPState, p: int, val: Array, ost: PackedFloat32Array, temp: f
 				var d: int = c[0]
 				var s := va[d] * 0.92
 				if st.up[d] >= 0 and st.up[d] != p:
+					if ost[st.up[d]] < AMICO:
+						continue
 					s *= _freno(ost[st.up[d]])
-				elif st.sc[d] >= 0 and st.sc[d] != p:
+				elif DPMap.centro[d] == 1 and st.sc[d] >= 0 and st.sc[d] != p:
+					if ost[st.sc[d]] < AMICO:
+						continue
 					s *= _freno(ost[st.sc[d]])
 				if vietate.has(d):
 					s *= float(vietate[d])
@@ -384,6 +392,14 @@ func valuta(st: DPState, p: int, ctx: Dictionary) -> float:
 		var q := st.up[i]
 		if q < 0:
 			continue
+		if q == p and (adj.ot[i] == DPAdj.M or (adj.ot[i] == DPAdj.S and adj.oa[i] != adj.ob[i])):
+			# la parola data: muovere (o sostenere una mossa) contro l'unità o il centro vuoto di un amico
+			var dd := DPMap.loc_prov[adj.oa[i]] if adj.ot[i] == DPAdj.M else adj.ob[i]
+			var vitt := st.up[dd]
+			if vitt < 0 and DPMap.centro[dd] == 1:
+				vitt = st.sc[dd]
+			if vitt >= 0 and vitt != p and ost[vitt] < AMICO:
+				s -= 70.0
 		if adj.ot[i] == DPAdj.M and adj.esito[i] == 1:
 			var d := DPMap.loc_prov[adj.oa[i]]
 			_occ[d] = q

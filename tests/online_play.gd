@@ -49,6 +49,7 @@ func _run() -> void:
 		await menu._online_join()
 	var ost := PackedFloat32Array([0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6])
 	var scritto := false
+	var visti := -1
 	var risposto := {}
 	while true:
 		await process_frame
@@ -63,6 +64,9 @@ func _run() -> void:
 		var g: DPGame = ses.g
 		v.config["auto"] = true
 		var io: int = ses.posto
+		if g.storia.size() != visti:
+			visti = g.storia.size()
+			print("DPTEST %s: %s (mossa %d)" % [OS.get_environment("DP_ROLE"), g.nome_fase(), ses.n])
 		if g.anno >= 1904:
 			await _wait(1.0)
 			print("DPTEST impronta %s | %d | %d | dispacci visti %d" % [str(JSON.stringify(g.st.to_dict()).hash()), g.storia.size(), ses.n, ses.corte.posta_di(io).size()])

@@ -18,6 +18,8 @@ var aggr: Array = []            # aggr[x][y]: quanto x ha attaccato y di recente
 var rng := RandomNumberGenerator.new()
 var ultimo_cambio := 1901       # ultimo anno in cui i centri sono cambiati di mano
 var voti := {}                  # voti sul pareggio in corso: potenza -> bool
+var intenzioni := {}             # (solo per gli archivi) con che animo x ha attaccato y nell'ultima fase
+var centri_anno := {}           # anno -> centri di ogni potenza all'inizio di quell'anno
 var su_messaggio := Callable()  # chiamata a ogni dispaccio spedito (interfaccia, rete)
 var _id := 0
 var _pool_chiave := ""
@@ -129,6 +131,8 @@ func da_leggere(p: int) -> int:
 ## All'inizio di una fase di movimento: le IA decidono la strategia e trattano fra loro e con gli umani.
 func apri_fase() -> void:
 	voti = {}
+	if g.fase == DPGame.PRIMAVERA and not centri_anno.has(g.anno):
+		centri_anno[g.anno] = Array(g.st.conta_centri())
 	if not g.e_movimento() or g.finita:
 		return
 	_pool_chiave = ""
@@ -141,6 +145,17 @@ func apri_fase() -> void:
 	for x in 7:
 		if dip[x] != null and g.viva(x):
 			dip[x].richieste_tattiche()
+	if g.fase == DPGame.PRIMAVERA and stallo() and g.anno % 2 == 1:
+		# in stallo, la potenza artificiale più forte propone alle persone di chiudere in parità
+		var nc := g.st.conta_centri()
+		var chi := -1
+		for x in 7:
+			if dip[x] != null and g.viva(x) and (chi < 0 or nc[x] > nc[chi]):
+				chi = x
+		if chi >= 0:
+			for y in 7:
+				if umano[y] and g.viva(y):
+					spedisci({"da": chi, "a": y, "tipo": "pareggio", "d": {}, "sincero": true, "v": 0})
 
 
 ## Come ogni potenza sembra disposta verso le altre, a giudicare da ciò che si vede sulla mappa.
@@ -233,6 +248,18 @@ func dopo_risoluzione(voce: Dictionary) -> void:
 				peso *= 0.7
 			if v >= 0 and v != x:
 				aggr[x][v] = minf(4.0, aggr[x][v] + peso)
+		# per gli archivi: com'era, dalla parte di chi attacca, il patto con chi è stato attaccato
+		intenzioni = {}
+		for x in 7:
+			if dip[x] != null:
+				for y in 7:
+					var d: DPDiplomatico = dip[x]
+					var come := "nessun patto dalla sua parte"
+					if d.pugnala == y:
+						come = "pugnalata calcolata"
+					elif d.amico(y):
+						come = "patto violato" if d.patto_sincero(y) else "patto firmato in malafede"
+					intenzioni["%d-%d" % [x, y]] = come
 		for x in 7:
 			if dip[x] != null:
 				dip[x].dopo_risoluzione(voce)
@@ -243,19 +270,27 @@ func dopo_risoluzione(voce: Dictionary) -> void:
 
 # ------------------------------------------------------------------ pareggio
 
+## La partita è in stallo: dal 1909 in poi, nessuna potenza ha guadagnato più di un centro in quattro anni.
+func stallo() -> bool:
+	if g.anno < 1909 or not centri_anno.has(g.anno - 4):
+		return false
+	var ora := g.st.conta_centri()
+	var allora: Array = centri_anno[g.anno - 4]
+	for p in 7:
+		if ora[p] - int(allora[p]) >= 2:
+			return false
+	return true
+
+
 func voto_pareggio_ia(p: int) -> bool:
 	var nc := g.st.conta_centri()
-	var fermi := g.anno - ultimo_cambio
 	var d: DPDiplomatico = dip[p]
-	var capo: int = d.capo() if d != null else -1
-	if capo == p and nc[p] >= 9 and fermi < 4:
-		return false
-	if fermi >= 3:
+	if stallo():
 		return true
 	var m: int = d.minaccia() if d != null else -1
 	if m >= 0 and m != p and nc[p] <= nc[m] - 5:
 		return true
-	if g.anno >= 1912 and nc[p] < 8:
+	if g.anno >= 1914 and nc[p] < 7:
 		return true
 	return false
 
@@ -306,7 +341,7 @@ func to_dict(tutta_la_posta := true) -> Dictionary:
 			if umano[m["da"]] or (m["a"] >= 0 and umano[m["a"]]) or i >= n - 150:
 				posta.append(m)
 	return {"umano": umano, "livello": livello, "dip": d, "msg": posta, "aggr": a, "id": _id,
-		"cambio": ultimo_cambio, "seme": rng.state}
+		"cambio": ultimo_cambio, "seme": rng.state, "centri": centri_anno}
 
 
 func from_dict(game: DPGame, d: Dictionary) -> void:
@@ -314,6 +349,7 @@ func from_dict(game: DPGame, d: Dictionary) -> void:
 	livello = int(d.get("livello", 2))
 	_id = int(d.get("id", 0))
 	ultimo_cambio = int(d.get("cambio", 1901))
+	centri_anno = DPGame._interi(d.get("centri", {}))
 	messaggi = DPGame._interi(d.get("msg", []))
 	aggr = []
 	for x in 7:

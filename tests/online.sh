@@ -8,7 +8,7 @@ python3 tests/firebase_mock.py $PORTA > /tmp/dp_mock.log 2>&1 &
 MOCK=$!
 sleep 1
 export DP_DB_URL=http://127.0.0.1:$PORTA/db DP_AUTH_URL=http://127.0.0.1:$PORTA/signup DP_REFRESH_URL=http://127.0.0.1:$PORTA/refresh
-rm -f /tmp/dp_codice.txt
+rm -f /tmp/dp_codice.txt /tmp/dp_host.cfg /tmp/dp_guest.cfg
 DP_ROLE=host DP_CODEFILE=/tmp/dp_codice.txt DP_SESSION=/tmp/dp_host.cfg $G --headless --path . --script tests/online_play.gd > /tmp/dp_host.log 2>&1 &
 H=$!
 DP_ROLE=guest DP_CODEFILE=/tmp/dp_codice.txt DP_SESSION=/tmp/dp_guest.cfg $G --headless --path . --script tests/online_play.gd > /tmp/dp_guest.log 2>&1 &

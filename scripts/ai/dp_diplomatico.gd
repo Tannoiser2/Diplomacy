@@ -28,9 +28,9 @@ const BERSAGLI_NATURALI := [
 	[0.0, 0.0, 0.5, 0.45, 0.0, 0.3, 0.0],      # Inghilterra: Francia, Germania, Russia
 	[0.0, 0.5, 0.0, 0.5, 0.25, 0.0, 0.0],      # Francia: Inghilterra, Germania, Italia
 	[0.05, 0.4, 0.45, 0.0, 0.0, 0.35, 0.0],    # Germania: Francia, Inghilterra, Russia
-	[0.5, 0.0, 0.3, 0.0, 0.0, 0.0, 0.45],      # Italia: Austria, Turchia, Francia
-	[0.5, 0.25, 0.0, 0.2, 0.0, 0.0, 0.5],      # Russia: Austria, Turchia, Inghilterra
-	[0.5, 0.0, 0.0, 0.0, 0.3, 0.5, 0.0],       # Turchia: Russia, Austria, Italia
+	[0.36, 0.0, 0.32, 0.0, 0.0, 0.0, 0.42],    # Italia: Turchia (Lepanto), Austria, Francia
+	[0.38, 0.25, 0.0, 0.2, 0.0, 0.0, 0.5],     # Russia: Turchia, Austria, Inghilterra
+	[0.38, 0.0, 0.0, 0.0, 0.3, 0.5, 0.0],      # Turchia: Russia, Austria, Italia
 ]
 ## Le zone calde del 1901 fra due vicini: buone candidate a restare sgombre.
 const ZONE_CALDE := {
@@ -112,6 +112,8 @@ func patto_sincero(q: int) -> bool:
 
 
 func _firma(q: int, tipo: String, d: Dictionary, sincero: bool) -> void:
+	if sincero and tipo != "dmz" and q == bersaglio:
+		bersaglio = -1            # si è fatta la pace con il nemico di ieri
 	for p in patti:
 		if p["con"] == q and p["tipo"] == tipo and (tipo != "dmz" or p["d"] == d):
 			p["sincero"] = sincero
@@ -201,9 +203,11 @@ func punteggio_bersaglio(q: int) -> float:
 				break
 	s += 0.12 * float(mie - sue)
 	# chi è già attaccato da altri è una preda più facile
+	var gia := 0.0
 	for x in 7:
 		if x != io and x != q:
-			s += 0.18 * minf(corte.aggr[x][q], 2.0)
+			gia += 0.15 * minf(corte.aggr[x][q], 2.0)
+	s += minf(gia, 0.3)
 	s += 0.25 * minf(corte.aggr[q][io], 3.0)        # chi mi attacca
 	s -= 0.5 * rel[q]
 	if patto_sincero(q):
@@ -223,6 +227,8 @@ func aggiorna_strategia() -> void:
 	for q in 7:
 		var s := punteggio_bersaglio(q) + rng.randf() * 0.15
 		punti.append(s)
+		if patto_sincero(q) and q != minaccia():
+			continue
 		if s > bv:
 			bv = s
 			best = q
@@ -232,6 +238,24 @@ func aggiorna_strategia() -> void:
 		best = bersaglio          # non si cambia nemico a ogni stagione
 	if best >= 0 and bv < -0.6 and best != minaccia():
 		best = -1                 # nessun bersaglio conveniente: si consolida
+	if best >= 0 and patto_sincero(best):
+		# chi sta per vincere va fermato: il patto si disdice apertamente
+		nota("disdico il patto con %s, che sta per vincere" % DPMap.POTENZE_BREVI[best])
+		_rompi(best)
+		_manda(best, "nota", {"k": "disdetta"})
+	if best < 0 and g().anno >= 1903 and g().fase == DPGame.PRIMAVERA:
+		# tutti i vicini sono amici: i leali disdicono un patto alla luce del sole, gli altri aspettano l'occasione
+		var cand := -1
+		var cv := -98.0
+		for q in 7:
+			if q != io and g().viva(q) and vicino(q) and patto_sincero(q) and not ha_patto(q, "alleanza") and punti[q] > cv:
+				cv = punti[q]
+				cand = q
+		if cand >= 0 and cv > -0.2 and lealta > 0.6 and rng.randf() < 0.35:
+			nota("disdico apertamente il patto con %s" % DPMap.POTENZE_BREVI[cand])
+			_rompi(cand)
+			rel[cand] -= 0.25
+			_manda(cand, "nota", {"k": "disdetta"})
 	bersaglio = best
 	if bersaglio != vecchio and bersaglio >= 0:
 		nota("nuovo bersaglio: %s" % DPMap.POTENZE_BREVI[bersaglio])
@@ -273,8 +297,8 @@ func ostilita() -> PackedFloat32Array:
 		var v := clampf(0.55 - 0.55 * r, 0.03, 1.0)
 		if amico(q) and patto_sincero(q):
 			v = minf(v, 0.22 if ha_patto(q, "alleanza") else 0.32)
-			# la fiducia scarsa tiene alta la guardia anche con gli amici
-			v = maxf(v, 0.45 - 0.5 * fid[q])
+			# la fiducia scarsa tiene alta la guardia anche con gli amici (ma senza attaccarli)
+			v = minf(maxf(v, 0.45 - 0.5 * fid[q]), DPTattica.AMICO - 0.02)
 		if q == bersaglio:
 			v = maxf(v, 0.9)
 		if q == pugnala:
@@ -318,6 +342,21 @@ func prepara_fase() -> void:
 			continue
 		vivi.append(p)
 	patti = vivi
+	# chi sta per vincere e chi non merita più fiducia: i patti si disdicono alla luce del sole
+	# (i più doppi invece tacciono e si tengono le mani libere)
+	var m0 := minaccia()
+	for q in 7:
+		if q == io or not g().viva(q) or not patto_sincero(q):
+			continue
+		if (q == m0 and m0 != io) or fid[q] < 0.25:
+			if doppiezza < 0.6 or q == m0:
+				nota("disdico il patto con %s" % DPMap.POTENZE_BREVI[q])
+				_rompi(q)
+				_manda(q, "nota", {"k": "disdetta"})
+			else:
+				for p in patti:
+					if p["con"] == q:
+						p["sincero"] = false
 	# fidarsi ma verificare: un amico con unità a ridosso dei miei centri di casa perde credito
 	var st := g().st
 	for q in 7:
@@ -356,7 +395,8 @@ func proposte() -> void:
 		if q == io or not g().viva(q) or not vicino(q) or amico(q) or _rifiutato_di_recente(q, "pace") or _bruciato(q):
 			continue
 		if q == bersaglio:
-			if guerra_da[q] == 0 and rng.randf() < doppiezza * 0.75:
+			if guerra_da[q] == 0 and g().anno - int(rifiuti.get("inganno:%d" % q, -99)) >= 3 and rng.randf() < _malafede(q) * 1.2:
+				rifiuti["inganno:%d" % q] = g().anno
 				nota("offro pace a %s solo per coprire l'attacco" % DPMap.POTENZE_BREVI[q])
 				_manda(q, "pace", {}, false)
 		elif rel[q] > -0.3 and rng.randf() < (0.7 if primo_anno else 0.35):
@@ -472,12 +512,12 @@ func ricevi(m: Dictionary) -> void:
 				_firma(q, "pace", {}, r[1])
 				if r[1]:
 					rel[q] = minf(1.0, rel[q] + 0.3)
-					if bersaglio < 0 or punteggio_bersaglio(x) > punteggio_bersaglio(bersaglio) - 0.3:
+					if not patto_sincero(x) and (bersaglio < 0 or punteggio_bersaglio(x) > punteggio_bersaglio(bersaglio) - 0.3):
 						bersaglio = x
 					alleato = q if alleato < 0 or rel[q] >= rel[alleato] else alleato
-			elif x == alleato and alleato >= 0 and amico(alleato) and rng.randf() < 0.6 + 0.3 * lealta:
+			elif x != io and x >= 0 and patto_sincero(x) and rng.randf() < 0.5 + 0.4 * lealta:
 				# si avverte l'amico: è così che si costruisce la fiducia
-				_manda(alleato, "info", {"su": q}, true)
+				_manda(x, "info", {"su": q}, true)
 		"pace":
 			var r := _valuta_pace(q)
 			_rispondi(m, r[0], r[1])
@@ -529,7 +569,7 @@ func ricevi(m: Dictionary) -> void:
 				if not DPMap.puo_muovere(st.ut[u], st.ul[u], int(o[1])):
 					ok = false
 			var sinc := ok and q != pugnala
-			if not ok and (q == bersaglio or q == pugnala) and rng.randf() < doppiezza * 0.6:
+			if not ok and (q == bersaglio or q == pugnala) and rng.randf() < _malafede(q):
 				ok = true
 				sinc = false
 			_rispondi(m, ok, sinc)
@@ -546,6 +586,10 @@ func ricevi(m: Dictionary) -> void:
 			_ricevi_risposta(m)
 		"nota":
 			var k: String = d.get("k", "")
+			if k == "disdetta":
+				# il patto è sciolto lealmente: nessun tradimento, ma d'ora in poi ci si guarda
+				_rompi(q)
+				rel[q] = minf(rel[q], 0.0) - 0.15
 			if k == "denuncia" and d.has("chi"):
 				var x := int(d["chi"])
 				if x != io:
@@ -604,13 +648,13 @@ func _valuta_alleanza(q: int, x: int) -> Array:
 	if _bruciato(q) and x != minaccia():
 		return [false, false]
 	if q == bersaglio or q == pugnala:
-		if rng.randf() < doppiezza * 0.8:
+		if rng.randf() < _malafede(q):
 			nota("fingo di allearmi con %s" % DPMap.POTENZE_BREVI[q])
 			return [true, false]
 		return [false, false]
 	if x == minaccia():
 		return [true, true]
-	if x == alleato and patto_sincero(x) and rng.randf() < 0.55 + 0.4 * lealta:
+	if patto_sincero(x):
 		return [false, false]
 	if x == bersaglio:
 		return [true, true]
@@ -618,12 +662,17 @@ func _valuta_alleanza(q: int, x: int) -> Array:
 		return [false, false]
 	var conv := punteggio_bersaglio(x)
 	var att := punteggio_bersaglio(bersaglio) if bersaglio >= 0 else -0.3
-	if conv > att - 0.45 and not (patto_sincero(x) and rng.randf() < lealta):
+	if conv > att - 0.45:
 		return [true, true]
-	# non conviene: i più doppi dicono di sì lo stesso, per tenersi buono chi propone
-	if rng.randf() < doppiezza * 0.35:
-		return [true, false]
 	return [false, false]
+
+
+## Probabilità di dare la parola in malafede a q. I giocatori da torneo mentono di rado e solo quando
+## conta: a guerra ormai aperta nessuno ci crederebbe, e una reputazione rovinata costa cara.
+func _malafede(q: int) -> float:
+	if guerra_da[q] > 0 and g().anno - guerra_da[q] < 3:
+		return 0.0
+	return doppiezza * doppiezza * 0.55
 
 
 ## Chi mi ha tradito da poco non ha più credito (salvo il fronte comune contro chi sta per vincere).
@@ -639,14 +688,14 @@ func _valuta_pace(q: int) -> Array:
 		if _fronti() >= 2 and corte.aggr[io][q] < 1.0 and rel[q] > -0.7:
 			bersaglio = -1
 			return [true, true]
-		if rng.randf() < doppiezza * 0.85:
+		if rng.randf() < _malafede(q):
 			nota("accetto la pace di %s senza intenzione di rispettarla" % DPMap.POTENZE_BREVI[q])
 			return [true, false]
 		return [false, false]
 	if rel[q] < -0.55 and corte.aggr[q][io] > 1.0 and _fronti() < 2:
 		return [false, false]
 	if fid[q] < 0.15:
-		return [rng.randf() < 0.3, false]
+		return [false, false]
 	return [true, true]
 
 
@@ -655,7 +704,7 @@ func _valuta_dmz(q: int, prov: Array) -> Array:
 		if g().st.sc[int(pr)] == io or DPMap.casa[int(pr)] == io and g().st.up[int(pr)] == io:
 			return [false, false]
 	if q == bersaglio or q == pugnala:
-		return [rng.randf() < doppiezza * 0.8, false]
+		return [rng.randf() < _malafede(q), false]
 	if rel[q] < -0.3:
 		return [false, false]
 	return [true, true]
@@ -670,7 +719,7 @@ func _valuta_sostegno(q: int, u: int, a: int, b: int) -> Array:
 		return [false, false]
 	if q == bersaglio or q == pugnala:
 		# la promessa di un sostegno che non arriverà: il tradimento più crudele
-		if rng.randf() < doppiezza * 0.7:
+		if rng.randf() < _malafede(q) * 1.3:
 			nota("prometto a %s un sostegno che non darò" % DPMap.POTENZE_BREVI[q])
 			return [true, false]
 		return [false, false]
@@ -832,6 +881,8 @@ func _soglia_pugnalata(q: int) -> float:
 		s -= 0.4                       # meglio colpire per primi chi sta per colpire
 	if nc[q] <= 3:
 		s -= 0.2
+	if bersaglio < 0 and g().anno >= 1903:
+		s -= 0.35                      # nessun altro fronte possibile: l'occasione fa l'uomo ladro
 	# niente pugnalate da un centro solo, se non per chiudere la partita
 	return maxf(s, 0.8 if nc[io] >= 14 else 1.15)
 
@@ -865,15 +916,33 @@ func dopo_risoluzione(voce: Dictionary) -> void:
 			dest = int(o[2])
 			if prima.up[int(o[1])] == io:
 				dest = -1            # sosteneva una mia mossa
-		if dest >= 0 and (prima.up[dest] == io or (prima.sc[dest] == io and DPMap.centro[dest] == 1)):
+		if dest >= 0 and (prima.up[dest] == io or (prima.up[dest] < 0 and prima.sc[dest] == io and DPMap.centro[dest] == 1)):
 			colpi[x] += 1
+	# se sono stato io ad attaccare qualcuno, fra noi ogni patto è finito anche per me
+	for u in ordini:
+		if prima.up[u] != io:
+			continue
+		var o: Array = ordini[u]
+		var dest := -1
+		if int(o[0]) == DPAdj.M and int(voce["esiti"][u]) != DPGame.E_NULLO:
+			dest = DPMap.loc_prov[int(o[1])]
+		elif int(o[0]) == DPAdj.S and int(o[1]) != int(o[2]):
+			dest = int(o[2])
+		if dest < 0:
+			continue
+		var vitt := prima.up[dest]
+		if vitt < 0 and DPMap.centro[dest] == 1:
+			vitt = prima.sc[dest]
+		if vitt >= 0 and vitt != io and vitt != pugnala and ha_patto(vitt):
+			guerra_da[vitt] = g().anno
+			_rompi(vitt)
 	for x in 7:
 		if x == io:
 			continue
 		if colpi[x] > 0:
 			guerra_da[x] = g().anno
 			if amico(x):
-				nota("TRADITO da %s" % DPMap.POTENZE_BREVI[x])
+				nota("TRADITO da %s (%s)" % [DPMap.POTENZE_BREVI[x], corte.intenzioni.get("%d-%d" % [x, io], "persona")])
 				fid[x] = minf(fid[x], 0.12)
 				rel[x] = -0.85
 				tradito_da[x] = g().anno

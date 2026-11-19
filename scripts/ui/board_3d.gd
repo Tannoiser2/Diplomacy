@@ -820,14 +820,15 @@ func punto_mappa(s: Vector2) -> Vector2:
 	var dir := cam.project_ray_normal(sc)
 	if absf(dir.y) < 0.0001:
 		return Vector2(-9999, -9999)
-	# due passi: prima il piano, poi si corregge con l'altezza del terreno trovato
-	var t := (0.0 - o.y) / dir.y
-	var hit := o + dir * t
-	var m := Vector2(hit.x * PX + DPMap.larghezza * 0.5, hit.z * PX + DPMap.altezza * 0.5)
-	var h := altezza(m)
-	t = (h - o.y) / dir.y
-	hit = o + dir * t
-	return Vector2(hit.x * PX + DPMap.larghezza * 0.5, hit.z * PX + DPMap.altezza * 0.5)
+	# si parte dal piano e si corregge qualche volta con l'altezza del terreno trovato
+	var h := 0.0
+	var m := Vector2.ZERO
+	for k in 5:
+		var t := (h - o.y) / dir.y
+		var hit := o + dir * t
+		m = Vector2(hit.x * PX + DPMap.larghezza * 0.5, hit.z * PX + DPMap.altezza * 0.5)
+		h = altezza(m) + 0.004
+	return m
 
 
 func provincia_in(m: Vector2) -> int:

@@ -155,6 +155,9 @@ func _foglio(m: Dictionary, io: int, w: float) -> Control:
 
 func rispondi(m: Dictionary, si: bool) -> void:
 	vista.ses.invia({"da": vista.io, "a": m["da"], "tipo": "risposta", "d": {"si": si}, "rif": m["id"], "v": randi() % 12})
+	if m["tipo"] == "pareggio" and si:
+		# accettare la proposta apre il voto formale fra tutte le potenze
+		vista.ses.proponi_pareggio(vista.io)
 	vista._aggiorna_pannello()
 
 

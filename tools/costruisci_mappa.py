@@ -230,9 +230,9 @@ def main():
         province.append({
             'sigla': s.upper(), 'nome': NOMI[s], 'tipo': tipo[s],
             'centro': s in centri, 'casa_centro': casa_sc.get(s, -1), 'casa': casa.get(s, -1),
-            'pedina': [round(u[0] + 22, 1), round(u[1] + 22, 1)],
+            'pedina': [round(u[0] + 17, 1), round(u[1] + 17, 1)],
             'stella': [round(v, 1) for v in sc[s]] if s in sc else None,
-            'etichetta': [round(u[0] + 22, 1), round(u[1] + 46, 1)],
+            'etichetta': [round(u[0] + 17, 1), round(u[1] + 40, 1)],
             'adj_a': adj_a[s], 'adj_f': adj_f[s],
         })
     lista_coste = []
@@ -240,7 +240,7 @@ def main():
         b, k = c.split('/')
         u = pos[b + '-' + k]
         lista_coste.append({'sigla': c.upper(), 'provincia': idx[b], 'costa': k.upper(),
-                            'pedina': [round(u[0] + 22, 1), round(u[1] + 22, 1)], 'adj_f': adj_f[c]})
+                            'pedina': [round(u[0] + 17, 1), round(u[1] + 17, 1)], 'adj_f': adj_f[c]})
     dati = {'larghezza': W, 'altezza': H, 'scala': S, 'potenze': POTENZE,
             'province': province, 'coste': lista_coste, 'iniziali': iniziali}
     os.makedirs(R + '/data', exist_ok=True)

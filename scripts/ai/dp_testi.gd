@@ -92,6 +92,10 @@ const T := {
 	"tregua": [
 		"Questa guerra ci dissangua entrambi a vantaggio di altri. Vi proponiamo di deporre le armi.",
 	],
+	"disdetta": [
+		"Le circostanze sono cambiate: vi comunichiamo lealmente che il patto fra noi non è più in vigore.",
+		"Disdiciamo oggi, alla luce del sole, gli accordi che ci legavano. Regolatevi di conseguenza.",
+	],
 	"denuncia": [
 		"A tutte le potenze: %s ha violato i patti firmati con noi. Chi tratta con lei sappia quanto vale la sua parola.",
 	],
