@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#17100b">
+<link rel="icon" href="b4.png">
+<title>Diplomacy - la vostra cancelleria</title>
+<!--
+  Diplomacy sul telefono: la parte segreta del gioco (diplomazia e ordini) come semplice pagina di testo.
+  La mappa resta sul tabellone, cioè sullo schermo di chi ospita la partita, che pubblica nel database
+  lo stato e tutte le scelte possibili (labels/tel/…); questa pagina le mostra e rimanda indietro le
+  azioni numerate (plans/<numero>/<posto>). Vedi scripts/net/telefoni.gd.
+-->
+<style>
+@font-face { font-family: "Old Standard"; src: url("fonts/OldStandard-Regular.ttf"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Old Standard"; src: url("fonts/OldStandard-Bold.ttf"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Old Standard"; src: url("fonts/OldStandard-Italic.ttf"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Pinyon"; src: url("fonts/PinyonScript-Regular.ttf"); font-display: swap; }
+@font-face { font-family: "Telegrafo"; src: url("fonts/SpecialElite-Regular.ttf"); font-display: swap; }
+:root {
+  --fondo: #17100b; --pannello: #1f1611; --pannello-l: #33241a; --ottone: #c2a257; --ottone-l: #ecd693;
+  --cera: #8e1b1b; --cera-l: #d24a3c; --testo: #efe6cf; --spento: #ad9f82; --verde: #9fd08a;
+  --carta: #eadfc2; --inchiostro: #2b1d12; --inchiostro-l: #5a4630;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: radial-gradient(120% 80% at 50% 0%, #2a1c12 0%, var(--fondo) 60%) fixed var(--fondo);
+  color: var(--testo); font-family: "Old Standard", Georgia, "Times New Roman", serif; font-size: 17px; line-height: 1.3;
+  overscroll-behavior: none; -webkit-text-size-adjust: 100%;
+}
+#app {
+  max-width: 600px; height: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 8px;
+  padding: calc(8px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));
+}
+.pannello { background: var(--pannello); border: 1px solid var(--ottone); border-radius: 8px; padding: 10px 12px; }
+#testa { display: flex; align-items: center; gap: 12px; min-height: 62px; }
+#testa img { height: 40px; border-radius: 2px; box-shadow: 0 0 0 1px #0008; }
+#testa .t { font-weight: 700; font-size: 24px; color: var(--ottone-l); line-height: 1.05; }
+#testa .s { font-style: italic; color: var(--spento); font-size: 15px; }
+#schede { display: none; gap: 6px; }
+#schede button { flex: 1; min-height: 50px; padding: 4px 2px; font-size: 15.5px; white-space: nowrap; }
+#schede button:first-child { flex: 1.35; }
+#schede button.su { background: #5a241c; border-color: var(--ottone-l); color: #fff3d0; }
+#corpo { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 8px; }
+#corpo > * { flex-shrink: 0; }
+#scheda > * { flex-shrink: 0; }
+#piede { font-style: italic; color: var(--spento); font-size: 15px; min-height: 22px; padding: 0 4px; }
+h2 { font-size: 21px; margin: 2px 0 0; color: var(--ottone-l); font-weight: 700; }
+h3 { font-size: 18px; margin: 8px 0 0; color: var(--ottone-l); font-weight: 700; }
+p { margin: 0; }
+.nota { font-style: italic; color: var(--spento); font-size: 15.5px; }
+.avviso { color: var(--cera-l); }
+.bene { color: var(--verde); }
+button {
+  font: inherit; font-weight: 700; color: var(--ottone-l); background: var(--pannello-l); border: 1.5px solid var(--ottone);
+  border-radius: 6px; min-height: 54px; padding: 8px 14px; width: 100%; text-align: center; cursor: pointer; letter-spacing: .2px;
+}
+button:active { filter: brightness(1.25); }
+button.sx { text-align: left; }
+button.primo { background: var(--cera); border-color: var(--ottone-l); color: #fff0d2; }
+button.acceso { color: #fff; }
+button.rosso { color: var(--cera-l); }
+button:disabled { opacity: .45; }
+.fila { display: flex; gap: 8px; }
+.griglia { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.fondo { margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
+.riga { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; min-height: 78px; padding: 8px 10px; border-width: 1px; border-color: #c2a25788; }
+.riga img { height: 30px; flex: none; border-radius: 2px; }
+.riga .n { color: #fff; font-size: 17.5px; }
+.riga .d { font-weight: 400; font-size: 15px; color: var(--spento); }
+.riga.posta { border: 2.5px solid var(--cera-l); }
+.riga.posta .d { color: var(--cera-l); }
+.riga.patto { border: 2.5px solid #5fae5f; }
+.riga.patto .d { color: #8fd08f; }
+.riga.morta { opacity: .4; }
+.foglio {
+  background: var(--carta) url("pergamena.jpg") center/cover; color: var(--inchiostro); border-radius: 3px; padding: 10px 12px;
+  box-shadow: 0 1px 4px #000a; display: flex; flex-direction: column; gap: 6px;
+}
+.foglio.mio { margin-left: 26px; filter: saturate(.85) brightness(.96); }
+.foglio:not(.mio) { margin-right: 26px; }
+.foglio .h { font-weight: 700; font-size: 12.5px; letter-spacing: .6px; color: var(--inchiostro-l); }
+.foglio .x { font-family: "Telegrafo", "Courier New", monospace; font-size: 16.5px; line-height: 1.28; white-space: pre-wrap; overflow-wrap: anywhere; }
+.foglio .e { font-weight: 700; font-size: 13px; letter-spacing: .6px; color: var(--inchiostro-l); }
+.foglio .e.ok { color: #2c6a2c; } .foglio .e.no { color: var(--cera); }
+.foglio button { min-height: 46px; background: #2b1d12; }
+.foglio button.primo { background: var(--cera); }
+.pot { display: flex; gap: 8px; align-items: flex-start; }
+.pot img { height: 20px; margin-top: 3px; flex: none; }
+.pot .n { font-weight: 700; font-size: 16.5px; }
+.pot .u { font-size: 15px; color: var(--spento); }
+.pot.io .u { color: var(--testo); }
+.c0 { color: #f08a80; } .c1 { color: #8fa8ff; } .c2 { color: #9fd0f5; } .c3 { color: #d8d8d8; } .c4 { color: #8fe08f; } .c5 { color: #ffffff; } .c6 { color: #f5d060; }
+.ris { font-size: 15.5px; } .ris.ko { color: var(--cera-l); }
+#velo { position: fixed; inset: 0; background: #000a; display: none; z-index: 5; }
+#scheda {
+  position: absolute; left: 0; right: 0; bottom: 0; max-width: 600px; margin: 0 auto; max-height: 88%; overflow-y: auto;
+  background: var(--pannello); border: 1px solid var(--ottone); border-bottom: 0; border-radius: 12px 12px 0 0;
+  padding: 14px 12px calc(14px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px;
+}
+#brindisi {
+  position: fixed; left: 50%; transform: translateX(-50%); top: calc(74px + env(safe-area-inset-top)); z-index: 9; display: none;
+  background: #2b1d12; color: var(--ottone-l); border: 1px solid var(--ottone); border-radius: 20px; padding: 8px 16px; font-style: italic;
+  max-width: 90%; text-align: center; box-shadow: 0 2px 10px #000c;
+}
+input, select, textarea {
+  font: inherit; font-size: 18px; width: 100%; background: #120c08; color: var(--testo); border: 1.5px solid var(--ottone);
+  border-radius: 6px; padding: 12px; min-height: 54px;
+}
+textarea { min-height: 120px; resize: none; }
+.titolo { font-family: "Pinyon", "Old Standard", serif; font-size: 64px; color: var(--ottone-l); text-align: center; line-height: 1; margin: 6px 0 0; font-weight: 400; }
+.motto { text-align: center; font-style: italic; color: var(--carta); margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="testa" class="pannello"></div>
+  <div id="schede"></div>
+  <div id="corpo" class="pannello"></div>
+  <div id="piede"></div>
+</div>
+<div id="velo"><div id="scheda"></div></div>
+<div id="brindisi"></div>
+<script>
+"use strict";
+// Configurazione pubblica del progetto Firebase del gioco (la stessa di scripts/net/net.gd).
+const CHIAVE = "AIzaSyCf1NQodB-J3OrdU_gHYQ1I6VJtXBk1ciU";
+let DB = "https://flammerouge-f8669-default-rtdb.europe-west1.firebasedatabase.app";
+let URL_ACCESSO = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + CHIAVE;
+let URL_RINNOVO = "https://securetoken.googleapis.com/v1/token?key=" + CHIAVE;
+const RADICE = "diplomacy/rooms";
+const parametri = new URLSearchParams(location.search);
+// per le prove in locale si può puntare a un finto Firebase: ?rtdb=http://127.0.0.1:8765/db
+if (["127.0.0.1", "localhost"].includes(location.hostname) && parametri.get("rtdb")) {
+  DB = parametri.get("rtdb");
+  const b = DB.replace(/\/[^/]*$/, "");
+  URL_ACCESSO = b + "/signup";
+  URL_RINNOVO = b + "/refresh";
+}
+const POTENZE = ["Austria-Ungheria", "Inghilterra", "Francia", "Germania", "Italia", "Russia", "Turchia"];
+
+const S = {
+  codice: "", posto: -1, uid: "", gettone: "", rinnovo: "", ora_gettone: 0, nome: "",
+  passo: "avvio",           // avvio | codice | entra | attesa | gioco | errore
+  scheda: "dip", con: -1, pub: null, priv: null, nomi: null, vpriv: null,
+  stanza: null, errore: "", seq: -1, coda: [], bozza: {}, chiave: "", letti: {}, in_viaggio: 0, inviati: "",
+  rete: true, primo: true, n_posta: -1
+};
+
+// ---------------------------------------------------------------- attrezzi
+function el(tag, attr, figli) {
+  const e = document.createElement(tag);
+  if (attr) for (const k in attr) {
+    if (k === "onclick") e.addEventListener("click", attr[k]);
+    else if (k === "testo") e.textContent = attr[k];
+    else if (attr[k] !== null && attr[k] !== undefined && attr[k] !== false) e.setAttribute(k, attr[k]);
+  }
+  for (const f of [].concat(figli || [])) if (f) e.appendChild(typeof f === "string" ? document.createTextNode(f) : f);
+  return e;
+}
+const $ = (id) => document.getElementById(id);
+function bandiera(p) { return el("img", { src: "b" + p + ".png", alt: "" }); }
+function pulsante(testo, fn, classe) { return el("button", { class: classe || "", onclick: fn, testo: testo }); }
+function memoria(k, v) {
+  try {
+    if (v === undefined) return JSON.parse(localStorage.getItem("dp_tel_" + k) || "null");
+    localStorage.setItem("dp_tel_" + k, JSON.stringify(v));
+  } catch (e) { /* navigazione privata: si va avanti senza memoria */ }
+  return null;
+}
+let _tb = 0;
+function brindisi(t) {
+  const b = $("brindisi");
+  b.textContent = t; b.style.display = "block";
+  clearTimeout(_tb); _tb = setTimeout(() => { b.style.display = "none"; }, 3200);
+}
+function vibra(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* non tutti i telefoni */ } }
+const dormi = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---------------------------------------------------------------- rete
+async function richiesta(metodo, url, corpo, modulo) {
+  try {
+    const r = await fetch(url, { method: metodo, headers: { "Content-Type": modulo ? "application/x-www-form-urlencoded" : "application/json" },
+      body: corpo === undefined ? undefined : (modulo ? corpo : JSON.stringify(corpo)), cache: "no-store" });
+    let dati = null;
+    try { dati = await r.json(); } catch (e) { dati = null; }
+    return { codice: r.status, dati: dati };
+  } catch (e) {
+    return { codice: 0, dati: null };
+  }
+}
+async function accesso() {
+  const m = memoria("accesso");
+  if (m && m.rinnovo && m.uid) {
+    const r = await richiesta("POST", URL_RINNOVO, "grant_type=refresh_token&refresh_token=" + encodeURIComponent(m.rinnovo), true);
+    if (r.codice === 200 && r.dati && r.dati.id_token) {
+      S.uid = m.uid; S.gettone = r.dati.id_token; S.rinnovo = r.dati.refresh_token || m.rinnovo; S.ora_gettone = Date.now();
+      memoria("accesso", { uid: S.uid, rinnovo: S.rinnovo });
+      return true;
+    }
+    if (r.codice === 0) return false;
+  }
+  const r = await richiesta("POST", URL_ACCESSO, { returnSecureToken: true });
+  if (r.codice !== 200 || !r.dati || !r.dati.idToken) return false;
+  S.uid = r.dati.localId; S.gettone = r.dati.idToken; S.rinnovo = r.dati.refreshToken; S.ora_gettone = Date.now();
+  memoria("accesso", { uid: S.uid, rinnovo: S.rinnovo });
+  return true;
+}
+async function fresco() {
+  if (Date.now() - S.ora_gettone < 50 * 60 * 1000) return;
+  const r = await richiesta("POST", URL_RINNOVO, "grant_type=refresh_token&refresh_token=" + encodeURIComponent(S.rinnovo), true);
+  if (r.codice === 200 && r.dati && r.dati.id_token) {
+    S.gettone = r.dati.id_token; S.rinnovo = r.dati.refresh_token || S.rinnovo; S.ora_gettone = Date.now();
+    memoria("accesso", { uid: S.uid, rinnovo: S.rinnovo });
+  }
+}
+function indirizzo(percorso) { return DB + "/" + RADICE + "/" + S.codice + (percorso ? "/" + percorso : "") + ".json?auth=" + encodeURIComponent(S.gettone); }
+async function leggi(percorso) { await fresco(); return richiesta("GET", indirizzo(percorso)); }
+async function scrivi(percorso, v) { await fresco(); return richiesta("PUT", indirizzo(percorso), v); }
+async function ritocca(percorso, v) { await fresco(); return richiesta("PATCH", indirizzo(percorso), v); }
+function elenco(v) {           // Firebase rende gli elenchi come array con buchi oppure come oggetti
+  const o = {};
+  if (Array.isArray(v)) v.forEach((x, i) => { if (x !== null && x !== undefined) o[i] = x; });
+  else if (v && typeof v === "object") Object.assign(o, v);
+  return o;
+}
+
+// ---------------------------------------------------------------- ingresso
+async function avvio() {
+  const c = (parametri.get("stanza") || "").trim().toUpperCase();
+  S.nome = memoria("nome") || "";
+  if (!/^[A-Z]{4}$/.test(c)) { S.passo = "codice"; disegna(); return; }
+  S.codice = c;
+  S.letti = memoria("letti_" + c) || {};
+  S.passo = "avvio"; disegna();
+  if (!(await accesso())) { S.passo = "errore"; S.errore = "Non riesco a collegarmi. Controllate la rete e riprovate."; disegna(); return; }
+  await cerca_stanza();
+}
+async function cerca_stanza() {
+  const [st, se, ap] = await Promise.all([leggi("status"), leggi("seats"), leggi("open")]);
+  if (st.codice !== 200 || st.dati === null) {
+    S.passo = "errore";
+    S.errore = st.codice === 0 ? "La rete non risponde. Riprovate fra un momento." : "La stanza " + S.codice + " non esiste più.";
+    disegna(); return;
+  }
+  S.stanza = { stato: st.dati, posti: elenco(se.dati), aperti: Object.values(elenco(ap.dati)).map(Number) };
+  for (const k in S.stanza.posti) if (S.stanza.posti[k] && S.stanza.posti[k].uid === S.uid) { S.posto = Number(k); return dentro(); }
+  S.passo = "entra"; disegna();
+}
+async function prendi(p) {
+  const campo = $("nome");
+  S.nome = (campo ? campo.value : S.nome).trim().slice(0, 20) || "Giocatore";
+  memoria("nome", S.nome);
+  S.passo = "avvio"; disegna();
+  if (p < 0) {
+    // partita già iniziata: si riprende un posto lasciato, con lo stesso nome di prima
+    for (const k in S.stanza.posti) {
+      const s = S.stanza.posti[k];
+      if (s && s.away && String(s.name || "").trim().toLowerCase() === S.nome.toLowerCase()) { p = Number(k); break; }
+    }
+    if (p < 0) { S.passo = "errore"; S.errore = "Non trovo un posto lasciato libero con questo nome."; disegna(); return; }
+  }
+  const r = await scrivi("seats/" + p, { uid: S.uid, name: S.nome, tel: true });
+  const v = await leggi("seats/" + p);
+  if (r.codice !== 200 || !v.dati || v.dati.uid !== S.uid) {
+    S.passo = "errore"; S.errore = "Quel posto è stato appena preso da qualcun altro."; disegna(); return;
+  }
+  S.posto = p;
+  dentro();
+}
+function dentro() {
+  // chi era entrato con il gioco intero e ora usa il telefono: lo si segnala a chi ospita
+  ritocca("seats/" + S.posto, { tel: true, away: false, seen: { ".sv": "timestamp" } });
+  S.passo = S.stanza.stato === "playing" ? "gioco" : "attesa";
+  disegna();
+  ciclo();
+  presenza();
+}
+async function presenza() {
+  for (;;) {
+    await dormi(8000);
+    ritocca("seats/" + S.posto, { seen: { ".sv": "timestamp" }, away: false });
+  }
+}
+
+// ---------------------------------------------------------------- ciclo di gioco
+async function ciclo() {
+  for (;;) {
+    try {
+      if (S.passo === "attesa") {
+        const [st, se, ap] = await Promise.all([leggi("status"), leggi("seats"), leggi("open")]);
+        if (st.codice === 200) {
+          S.rete = true;
+          S.stanza = { stato: st.dati, posti: elenco(se.dati), aperti: Object.values(elenco(ap.dati)).map(Number) };
+          if (st.dati === "playing") S.passo = "gioco";
+          disegna();
+        } else S.rete = false;
+      } else if (S.passo === "gioco") {
+        await aggiorna();
+        await spedisci_coda();
+      }
+    } catch (e) { console.log("ciclo: " + e); }
+    await dormi(S.passo === "gioco" ? 1300 : 1600);
+  }
+}
+async function aggiorna() {
+  const r = await leggi("labels/tel/pub");
+  if (r.codice !== 200) { if (S.rete) { S.rete = false; piede(); } return; }
+  S.rete = true;
+  if (typeof r.dati !== "string") { piede(); return; }
+  const pub = JSON.parse(r.dati);
+  let cambiato = !S.pub || JSON.stringify(pub) !== JSON.stringify(S.pub);
+  const fase_nuova = S.pub && pub.chiave !== S.pub.chiave;
+  S.pub = pub;
+  if (S.seq < 0) S.seq = Number((pub.visti || {})[S.posto] || 0);
+  if (!S.nomi) { const n = await leggi("labels/tel/nomi"); if (typeof n.dati === "string") S.nomi = JSON.parse(n.dati); }
+  const vp = (pub.vp || {})[S.posto];
+  if (vp !== undefined && vp !== S.vpriv) {
+    const p = await leggi("labels/tel/p" + S.posto);
+    if (typeof p.dati === "string") {
+      S.priv = JSON.parse(p.dati); S.vpriv = vp; cambiato = true;
+      const n = S.priv.posta.filter((m) => !m.mia).length;
+      if (S.n_posta >= 0 && n > S.n_posta) {
+        const u = S.priv.posta.filter((m) => !m.mia).pop();
+        vibra(80);
+        if (!(S.scheda === "dip" && S.con === u.con)) brindisi("Nuovo dispaccio: " + POTENZE[u.con] + ".");
+      }
+      S.n_posta = n;
+    }
+  }
+  if (fase_nuova) {
+    S.bozza = {}; S.inviati = ""; chiudi_scheda();
+    vibra(120);
+    if (pub.ultima) { S.scheda = "sit"; brindisi(pub.ultima.t + " risolta: guardate il tabellone."); }
+  }
+  if (cambiato && !occupato()) disegna(); else piede();
+}
+function occupato() {
+  // non si ridisegna sotto le dita: mentre una scheda è aperta o si sta scrivendo
+  const a = document.activeElement;
+  return $("velo").style.display === "block" || (a && ["INPUT", "TEXTAREA", "SELECT"].includes(a.tagName));
+}
+function manda(k, v) { S.coda.push({ k: k, v: v }); spedisci_coda(); }
+let _spedendo = false;
+async function spedisci_coda() {
+  if (_spedendo || S.seq < 0) return;
+  _spedendo = true;
+  try {
+    while (S.coda.length) {
+      const r = await scrivi("plans/" + S.seq + "/" + S.posto, S.coda[0]);
+      if (r.codice === 200) { S.coda.shift(); S.seq++; }
+      else if (r.codice === 401 || r.codice === 403) { S.seq++; }       // numero già usato: si passa al successivo
+      else break;                                                        // rete assente: si riprova al prossimo giro
+    }
+  } finally { _spedendo = false; }
+}
+function dispaccio(a, tipo, d, altro) {
+  const m = Object.assign({ da: S.posto, a: a, tipo: tipo, d: d || {}, v: Math.floor(Math.random() * 12) }, altro || {});
+  manda("msg", JSON.stringify(m));
+  S.in_viaggio = Date.now();
+  chiudi_scheda();
+  brindisi("Dispaccio spedito.");
+  disegna();
+}
+
+// ---------------------------------------------------------------- disegno
+function disegna() {
+  const testa = $("testa"), corpo = $("corpo"), schede = $("schede");
+  const scorri = corpo.scrollTop;
+  const stessa = corpo.dataset.vista === vista_attuale();
+  testa.replaceChildren(); corpo.replaceChildren(); schede.replaceChildren();
+  schede.style.display = "none";
+  if (S.passo === "gioco" && S.pub && S.priv) {
+    testa.append(bandiera(S.posto), el("div", null, [el("div", { class: "t", testo: POTENZE[S.posto] }),
+      el("div", { class: "s", testo: S.pub.finita ? "Partita conclusa" : S.pub.titolo + " - " + S.priv.nc + " centri, " + S.priv.nu + " unità" })]));
+    schede.style.display = "flex";
+    const nl = da_leggere(-1);
+    const defs = [["dip", nl ? "Diplomazia (" + nl + ")" : "Diplomazia"], ["ord", posso_ordinare() ? "Ordini (!)" : "Ordini"], ["sit", "Situazione"]];
+    for (const d of defs) schede.append(pulsante(d[1], () => { S.scheda = d[0]; disegna(); }, S.scheda === d[0] ? "su" : ""));
+    const voto = scheda_voto();
+    if (voto) corpo.append(voto);
+    if (S.scheda === "dip") vista_dip(corpo); else if (S.scheda === "ord") vista_ordini(corpo); else vista_situazione(corpo);
+  } else {
+    testa.append(el("div", null, [el("div", { class: "t", testo: S.posto >= 0 ? POTENZE[S.posto] : "Diplomacy" }),
+      el("div", { class: "s", testo: S.codice ? "Stanza " + S.codice : "La vostra cancelleria" })]));
+    if (S.posto >= 0) testa.prepend(bandiera(S.posto));
+    vista_ingresso(corpo);
+  }
+  corpo.dataset.vista = vista_attuale();
+  if (stessa) corpo.scrollTop = scorri;
+  else if (S.scheda === "dip" && S.con >= 0 && S.passo === "gioco") { const l = corpo.querySelector(".lista"); if (l) l.scrollTop = 1e6; corpo.scrollTop = 1e6; }
+  piede();
+}
+function vista_attuale() { return S.passo + "/" + S.scheda + "/" + S.con; }
+function piede() {
+  let t = "";
+  if (!S.rete) t = "Rete assente: riprovo...";
+  else if (S.passo === "gioco" && S.pub) {
+    if (S.pub.finita) t = "La partita è conclusa.";
+    else if (S.pub.attesa && S.pub.attesa.length) t = "In attesa degli ordini di: " + S.pub.attesa.map((p) => S.pub.pot[p].b).join(", ") + ".";
+    else t = "Le cancellerie deliberano: guardate il tabellone.";
+  }
+  $("piede").textContent = t;
+}
+
+function vista_ingresso(c) {
+  if (S.passo === "codice") {
+    c.append(el("div", { class: "titolo", testo: "Diplomacy" }), el("p", { class: "motto", testo: "Europa, 1901. Accordi, sotterfugi e tradimenti." }),
+      el("p", { testo: "Scrivete il codice della stanza mostrato dal tabellone, oppure inquadrate il suo codice QR." }),
+      el("input", { id: "codice", maxlength: "4", placeholder: "CODICE", autocapitalize: "characters", autocomplete: "off" }),
+      pulsante("Entra", () => { const v = $("codice").value.trim().toUpperCase(); if (/^[A-Z]{4}$/.test(v)) location.search = "?stanza=" + v + (parametri.get("rtdb") ? "&rtdb=" + encodeURIComponent(parametri.get("rtdb")) : ""); else brindisi("Il codice ha quattro lettere."); }, "primo"));
+  } else if (S.passo === "avvio") {
+    c.append(el("div", { class: "titolo", testo: "Diplomacy" }), el("p", { class: "motto", testo: "Un momento..." }));
+  } else if (S.passo === "errore") {
+    c.append(el("p", { class: "avviso", testo: S.errore }), pulsante("Riprova", () => location.reload(), "primo"));
+  } else if (S.passo === "entra") {
+    c.append(el("div", { class: "titolo", testo: "Diplomacy" }), el("p", { class: "motto", testo: "Europa, 1901. Accordi, sotterfugi e tradimenti." }),
+      el("p", { class: "nota", testo: "Il vostro nome" }), el("input", { id: "nome", maxlength: "20", placeholder: "Giocatore", value: S.nome, autocomplete: "off" }));
+    if (S.stanza.stato !== "lobby") {
+      c.append(el("p", { testo: "La partita è già cominciata. Se avevate un posto, scrivete lo stesso nome di prima per riprenderlo." }), pulsante("Rientra", () => prendi(-1), "primo"));
+      return;
+    }
+    c.append(el("p", { class: "nota", testo: "Scegliete la vostra potenza" }));
+    let liberi = 0;
+    for (const p of S.stanza.aperti) {
+      if (S.stanza.posti[p]) continue;
+      liberi++;
+      c.append(el("button", { class: "riga", onclick: () => prendi(p) }, [bandiera(p), el("span", { class: "n", testo: POTENZE[p] })]));
+    }
+    if (!liberi) c.append(el("p", { class: "avviso", testo: "Tutti i posti sono già occupati." }), pulsante("Riprova", () => location.reload()));
+  } else if (S.passo === "attesa") {
+    c.append(el("h2", { testo: "Siete dentro" }), el("p", { testo: "La partita comincia quando chi ha creato la stanza dà il via dal tabellone. Tenete aperta questa pagina." }));
+    for (let p = 0; p < 7; p++) {
+      const s = S.stanza.posti[p];
+      const chi = s ? String(s.name || "Giocatore") : (S.stanza.aperti.includes(p) ? "posto libero" : "IA");
+      c.append(el("div", { class: "pot" }, [bandiera(p), el("div", { class: "n " + (s ? "bene" : ""), testo: POTENZE[p] + ": " + chi })]));
+    }
+  } else {
+    c.append(el("h2", { testo: "Si comincia" }), el("p", { testo: "Il tabellone sta preparando la partita..." }));
+  }
+}
+
+// ---- diplomazia
+function da_leggere(q) {
+  let n = 0;
+  for (const m of S.priv.posta) if (!m.mia && !S.letti[m.id] && (q < 0 || m.con === q)) n++;
+  return n;
+}
+function vista_dip(c) {
+  const P = S.priv;
+  if (S.con < 0 || S.con === S.posto) {
+    c.append(el("h2", { testo: "Quadro diplomatico" }), el("p", { class: "nota", testo: "Toccate una potenza per trattare: alleanze, patti, sostegni. Nessuno è obbligato a mantenere la parola." }));
+    for (let q = 0; q < 7; q++) {
+      if (q === S.posto) continue;
+      const a = P.altre[q], nl = da_leggere(q), pot = S.pub.pot[q];
+      const scambi = P.posta.filter((m) => m.con === q).length;
+      let stato = !pot.viva ? "Eliminata." : (a.acc.length ? maiuscola(a.acc.join("; ")) + "." : (scambi ? "Nessun accordo in vigore." : "Nessun contatto finora."));
+      if (nl) stato = (nl === 1 ? "1 dispaccio" : nl + " dispacci") + " da leggere. " + stato;
+      const classe = "riga" + (nl ? " posta" : "") + (a.acc.length ? " patto" : "") + (pot.viva ? "" : " morta");
+      c.append(el("button", { class: classe, onclick: () => { S.con = q; disegna(); } }, [bandiera(q),
+        el("span", null, [el("div", { class: "n", testo: pot.n + " - " + pot.c + " centri" }), el("div", { class: "d", testo: stato })])]));
+    }
+    return;
+  }
+  const q = S.con, a = P.altre[q];
+  c.append(pulsante("Quadro diplomatico", () => { S.con = -1; disegna(); }));
+  c.append(el("h2", { testo: a.canc }), el("p", { class: "nota", testo: a.chi + " " + (a.acc.length ? "Accordi: " + a.acc.join("; ") + "." : "Nessun accordo in vigore.") }));
+  const conv = P.posta.filter((m) => m.con === q);
+  if (!conv.length) c.append(el("p", { class: "nota", testo: "Nessun dispaccio scambiato." }));
+  let letto = false;
+  for (const m of conv) {
+    const f = el("div", { class: "foglio" + (m.mia ? " mio" : "") }, [el("div", { class: "h", testo: m.h }), el("div", { class: "x", testo: m.t })]);
+    if (m.s === "ok") f.append(el("div", { class: "e ok", testo: "ACCETTATO" }));
+    else if (m.s === "no") f.append(el("div", { class: "e no", testo: "RIFIUTATO" }));
+    else if (m.s === "attesa") f.append(el("div", { class: "e", testo: "IN ATTESA DI RISPOSTA" }));
+    else if (m.s === "scaduto") f.append(el("div", { class: "e", testo: "SCADUTO" }));
+    else if (m.s === "rispondi") {
+      if (S.bozza["r" + m.id]) f.append(el("div", { class: "e", testo: "RISPOSTA IN VIAGGIO..." }));
+      else f.append(el("div", { class: "fila" }, [pulsante("Accetta", () => rispondi(m, true), "primo"), pulsante("Rifiuta", () => rispondi(m, false))]));
+    }
+    c.append(f);
+    if (!m.mia && !S.letti[m.id]) { S.letti[m.id] = 1; letto = true; }
+  }
+  if (letto) memoria("letti_" + S.codice, S.letti);
+  if (Date.now() - S.in_viaggio < 6000) c.append(el("p", { class: "nota", testo: "Un dispaccio è in viaggio..." }));
+  if (S.pub.pot[q].viva && !S.pub.finita && P.viva) {
+    const sost = a.sc && a.sc.length;
+    c.append(el("div", { class: "fondo" }, [el("div", { class: "griglia" }, [
+      pulsante("Proponi alleanza", () => componi("alleanza"), "primo"), pulsante("Proponi pace", () => componi("pace"), "primo"),
+      el("button", { class: "primo", disabled: sost ? null : "", onclick: () => componi("chiedi_sost"), testo: "Chiedi sostegno" }),
+      pulsante("Altro dispaccio", () => componi(""))])]));
+  }
+}
+function maiuscola(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+function rispondi(m, si) {
+  S.bozza["r" + m.id] = 1;
+  manda("msg", JSON.stringify({ da: S.posto, a: m.con, tipo: "risposta", d: { si: si }, rif: m.id, v: Math.floor(Math.random() * 12) }));
+  if (m.tp === "pareggio" && si) manda("par", "p");
+  brindisi(si ? "Avete accettato." : "Avete rifiutato.");
+  disegna();
+}
+function apri_scheda(figli) { $("scheda").replaceChildren(...figli.filter(Boolean)); $("velo").style.display = "block"; $("scheda").scrollTop = 0; }
+function chiudi_scheda() { if ($("velo").style.display === "block") { $("velo").style.display = "none"; return true; } return false; }
+function chiudi() { chiudi_scheda(); disegna(); }
+function scelta_provincia(id, vuota) {
+  const s = el("select", { id: id });
+  if (vuota) s.append(el("option", { value: "-1", testo: "(nessun'altra)" }));
+  const ord = (S.nomi || []).map((n, i) => [n, i]).sort((a, b) => a[0].localeCompare(b[0], "it"));
+  for (const x of ord) s.append(el("option", { value: String(x[1]), testo: x[0] }));
+  return s;
+}
+function componi(tipo) {
+  const q = S.con, a = S.priv.altre[q];
+  const titolo = el("h2", { testo: "Dispaccio per " + POTENZE[q] });
+  const annulla = pulsante("Annulla", chiudi);
+  const elenco_proposte = (righe, tipo_msg) => righe.map((x) => pulsante(maiuscola(x[0]), () => dispaccio(q, tipo_msg, x[1]), "sx"));
+  if (tipo === "") {
+    const v = [titolo, pulsante("Alleanza contro una potenza", () => componi("alleanza"), "sx"), pulsante("Patto di non aggressione", () => componi("pace"), "sx"),
+      pulsante("Zona sgombra (nessuno ci entra)", () => componi("dmz"), "sx")];
+    if (a.sc && a.sc.length) v.push(pulsante("Chiedere un sostegno", () => componi("chiedi_sost"), "sx"));
+    if (a.so && a.so.length) v.push(pulsante("Offrire un sostegno", () => componi("offri_sost"), "sx"));
+    if (a.mo && a.mo.length) v.push(pulsante("Chiedere un ordine preciso", () => componi("chiedi_mossa"), "sx"));
+    if (a.terze.length) v.push(pulsante("Informazione riservata", () => componi("info"), "sx"));
+    v.push(pulsante("Messaggio libero", () => componi("libero"), "sx"));
+    if (a.acc.length) v.push(pulsante("Disdire gli accordi presi", () => componi("disdetta"), "sx rosso"));
+    v.push(annulla);
+    apri_scheda(v); return;
+  }
+  if (tipo === "alleanza" || tipo === "info") {
+    const v = [titolo, el("p", { class: "nota", testo: tipo === "alleanza" ? "Alleanza contro chi?" : "Chi trama contro di loro?" })];
+    for (const t of a.terze) v.push(el("button", { class: "riga", onclick: () => dispaccio(q, tipo, tipo === "alleanza" ? { contro: t[0] } : { su: t[0] }) }, [bandiera(t[0]), el("span", { class: "n", testo: t[1] })]));
+    if (!a.terze.length) v.push(el("p", { class: "avviso", testo: "Non ci sono altre potenze in gioco." }));
+    v.push(annulla); apri_scheda(v); return;
+  }
+  if (tipo === "pace") {
+    apri_scheda([titolo, el("p", { testo: "Proponete un patto di non aggressione: nessuno dei due attacca l'altro." }),
+      pulsante("Spedisci", () => dispaccio(q, "pace", {}), "primo"), annulla]); return;
+  }
+  if (tipo === "disdetta") {
+    apri_scheda([titolo, el("p", { testo: "Comunicate lealmente che gli accordi fra voi non valgono più. Non è un tradimento, ma da qui in poi ci si fida meno." }),
+      pulsante("Disdici gli accordi", () => dispaccio(q, "nota", { k: "disdetta" }), "primo"), annulla]); return;
+  }
+  if (tipo === "dmz") {
+    apri_scheda([titolo, el("p", { class: "nota", testo: "Quale provincia resta sgombra" }), scelta_provincia("p1", false),
+      el("p", { class: "nota", testo: "E anche" }), scelta_provincia("p2", true),
+      pulsante("Spedisci", () => { const p1 = Number($("p1").value), p2 = Number($("p2").value); dispaccio(q, "dmz", { prov: p2 >= 0 && p2 !== p1 ? [p1, p2] : [p1] }); }, "primo"), annulla]); return;
+  }
+  if (tipo === "libero") {
+    apri_scheda([titolo, el("p", { class: "nota", testo: "Il vostro messaggio (le IA rispondono solo alle proposte precise)" }), el("textarea", { id: "libero", maxlength: "240" }),
+      pulsante("Spedisci", () => { const t = $("libero").value.trim(); if (t) dispaccio(q, "libero", { testo: t }); }, "primo"), annulla]); return;
+  }
+  const liste = { chiedi_sost: [a.sc, "Che cosa chiedete? (una loro unità sostiene una vostra)"], offri_sost: [a.so, "Che cosa offrite? (una vostra unità sostiene una loro)"], chiedi_mossa: [a.mo, "Quale ordine chiedete?"] };
+  const l = liste[tipo];
+  const v = [titolo, el("p", { class: "nota", testo: l[1] })].concat(elenco_proposte(l[0] || [], tipo));
+  if (!(l[0] || []).length) v.push(el("p", { class: "avviso", testo: "Non ci sono scelte possibili per questa proposta." }));
+  v.push(annulla); apri_scheda(v);
+}
+
+// ---- ordini
+function posso_ordinare() { return S.priv && S.priv.deve && !S.priv.consegnato && !S.pub.finita && S.inviati !== S.pub.chiave; }
+function vista_ordini(c) {
+  const P = S.priv, tipo = S.pub.tipo;
+  if (S.pub.finita) { c.append(el("p", { testo: "La partita è conclusa. Il risultato è nella scheda Situazione." })); return; }
+  if (!P.deve) { c.append(el("p", { testo: "Nessun ordine da dare in questa fase." })); return; }
+  if (P.consegnato || S.inviati === S.pub.chiave) {
+    c.append(el("p", { class: "bene", testo: P.consegnato ? "Ordini consegnati. Restano segreti fino alla risoluzione." : "Consegno gli ordini..." }));
+    for (const t of (S.bozza.testi || [])) c.append(el("p", { class: "ris", testo: t }));
+    if (P.consegnato && P.modifica) c.append(el("div", { class: "fondo" }, pulsante("Modifica gli ordini", () => { S.inviati = ""; manda("rit", "1"); brindisi("Ritiro gli ordini..."); })));
+    return;
+  }
+  if (tipo === "mov") {
+    c.append(el("p", { class: "nota", testo: "Toccate un'unità per cambiarle l'ordine. Senza ordini resta ferma." }));
+    for (const u of P.unita) {
+      const b = S.bozza["u" + u.u];
+      c.append(pulsante(u.n + ": " + (b ? b.t : "resta ferma"), () => ordine(u, ""), "sx" + (b ? " acceso" : "")));
+    }
+    c.append(el("div", { class: "fondo" }, pulsante("Consegna gli ordini", consegna, "primo")));
+  } else if (tipo === "rit") {
+    c.append(el("p", { class: "nota", testo: "Scegliete dove si ritira ogni unità scacciata. Due unità che si ritirano nella stessa provincia si sciolgono entrambe." }));
+    for (const r of P.rit) {
+      const b = S.bozza["r" + r.p];
+      c.append(pulsante(r.n + ": " + (b ? "si ritira in " + b.t : "si scioglie"), () => ritirata(r), "sx" + (b ? " acceso" : "")));
+    }
+    c.append(el("div", { class: "fondo" }, pulsante("Consegna le ritirate", consegna, "primo")));
+  } else if (P.saldo > 0) {
+    c.append(el("p", { testo: "Potete costruire " + P.saldo + " unità nei vostri centri di casa liberi." }));
+    for (const k of (P.case || [])) {
+      const b = S.bozza["c" + k.p];
+      c.append(pulsante(k.n + ": " + (b ? b.t.toLowerCase() : "nessuna costruzione"), () => costruzione(k), "sx" + (b ? " acceso" : "")));
+    }
+    c.append(el("div", { class: "fondo" }, pulsante("Consegna le costruzioni", consegna, "primo")));
+  } else {
+    c.append(el("p", { class: "avviso", testo: "Avete più unità che centri: scegliete " + (-P.saldo) + " unità da sciogliere." }));
+    for (const x of (P.scio || [])) {
+      const b = S.bozza["s" + x[0]];
+      c.append(pulsante(x[1] + ": " + (b ? "SI SCIOGLIE" : "resta"), () => { if (b) delete S.bozza["s" + x[0]]; else S.bozza["s" + x[0]] = 1; disegna(); }, "sx" + (b ? " rosso" : "")));
+    }
+    c.append(el("div", { class: "fondo" }, pulsante("Consegna gli scioglimenti", consegna, "primo")));
+  }
+}
+function fissa(chiave, o, t) { if (o === null) delete S.bozza[chiave]; else S.bozza[chiave] = { o: o, t: t }; chiudi(); }
+function ordine(u, passo, altra) {
+  const v = [el("h2", { testo: u.n })];
+  const k = "u" + u.u;
+  if (passo === "") {
+    v.push(el("p", { class: "nota", testo: "Che cosa deve fare?" }), pulsante("Resta ferma", () => fissa(k, null), "sx"));
+    if (u.m.length) v.push(pulsante("Muove...", () => ordine(u, "m"), "sx"));
+    if (u.s.length) v.push(pulsante("Sostiene un'altra unità...", () => ordine(u, "s"), "sx"));
+    if (u.c.length) v.push(pulsante("Convoglia un'armata...", () => ordine(u, "c"), "sx"));
+  } else if (passo === "m") {
+    v.push(el("p", { class: "nota", testo: "Dove muove?" }));
+    for (const x of u.m) v.push(pulsante(maiuscola(x[0].replace(/^muove in /, "")), () => fissa(k, x[1], x[0]), "sx"));
+  } else if (passo === "s" || passo === "c") {
+    v.push(el("p", { class: "nota", testo: passo === "s" ? "Quale unità sostiene?" : "Quale armata convoglia?" }));
+    for (const x of u[passo]) v.push(pulsante(x[0], () => ordine(u, passo + "2", x), "sx"));
+  } else {
+    const verbo = passo === "s2" ? "sostiene " : "convoglia ";
+    v.push(el("p", { class: "nota", testo: maiuscola(verbo) + altra[0] + ":" }));
+    for (const x of altra[1]) v.push(pulsante(x[0], () => fissa(k, x[1], verbo + altra[0] + " " + x[0]), "sx"));
+  }
+  if (passo !== "") v.push(pulsante("Indietro", () => ordine(u, passo.length === 2 ? passo[0] : "")));
+  v.push(pulsante("Annulla", chiudi));
+  apri_scheda(v);
+}
+function ritirata(r) {
+  const v = [el("h2", { testo: r.n }), el("p", { class: "nota", testo: "Dove si ritira?" })];
+  for (const x of r.o) v.push(pulsante(x[1], () => fissa("r" + r.p, x[0], x[1]), "sx"));
+  v.push(pulsante("Si scioglie", () => fissa("r" + r.p, null), "sx"), pulsante("Annulla", chiudi));
+  apri_scheda(v);
+}
+function costruzione(k) {
+  const v = [el("h2", { testo: k.n }), el("p", { class: "nota", testo: "Che cosa costruite qui?" })];
+  for (const x of k.o) v.push(pulsante(x[0], () => fissa("c" + k.p, x[1], x[0])));
+  v.push(pulsante("Nessuna costruzione", () => fissa("c" + k.p, null)), pulsante("Annulla", chiudi));
+  apri_scheda(v);
+}
+function consegna() {
+  const P = S.priv, tipo = S.pub.tipo;
+  let o = {}, testi = [];
+  if (tipo === "mov") {
+    for (const u of P.unita) { const b = S.bozza["u" + u.u]; o[u.u] = b ? b.o : [0, -1, -1]; testi.push(u.n + ": " + (b ? b.t : "resta ferma")); }
+  } else if (tipo === "rit") {
+    for (const r of P.rit) { const b = S.bozza["r" + r.p]; o[r.p] = b ? b.o : -1; testi.push(r.n + ": " + (b ? "si ritira in " + b.t : "si scioglie")); }
+  } else if (P.saldo > 0) {
+    const c = [];
+    for (const k of (P.case || [])) { const b = S.bozza["c" + k.p]; if (b) { c.push(b.o); testi.push(k.n + ": " + b.t.toLowerCase()); } }
+    if (c.length > P.saldo) { brindisi("Potete costruire al massimo " + P.saldo + " unità."); return; }
+    o = { c: c };
+    if (!c.length) testi.push("Nessuna costruzione.");
+  } else {
+    const s = [];
+    for (const x of (P.scio || [])) if (S.bozza["s" + x[0]]) { s.push(x[0]); testi.push(x[1] + ": si scioglie"); }
+    if (s.length !== -P.saldo) { brindisi("Dovete scegliere esattamente " + (-P.saldo) + " unità da sciogliere."); return; }
+    o = { s: s };
+  }
+  S.bozza.testi = testi;
+  S.inviati = S.pub.chiave;
+  manda("ord", JSON.stringify(o));
+  disegna();
+}
+
+// ---- situazione
+function scheda_voto() {
+  if (!S.pub.par || S.priv.ho_votato || !S.priv.viva || S.pub.finita || S.bozza.votato) return null;
+  const voto = (si) => { S.bozza.votato = 1; manda("par", si ? "1" : "0"); disegna(); };
+  return el("div", { class: "foglio" }, [el("div", { class: "h", testo: "PROPOSTA DI PAREGGIO" }),
+    el("div", { class: "x", testo: "Si propone di chiudere la partita con un pareggio fra le potenze superstiti. Accettate?" }),
+    el("div", { class: "fila" }, [pulsante("Accetto", () => voto(true), "primo"), pulsante("Rifiuto", () => voto(false))])]);
+}
+function vista_situazione(c) {
+  const pub = S.pub;
+  if (pub.finita) c.append(el("h2", { testo: "Partita conclusa" }), el("p", { testo: pub.esito }));
+  c.append(el("h2", { testo: "Le potenze" }));
+  pub.pot.forEach((p, i) => {
+    c.append(el("div", { class: "pot" + (i === S.posto ? " io" : "") }, [bandiera(i), el("div", null, [
+      el("div", { class: "n c" + i, testo: p.b + " (" + p.chi + ") - " + p.c + " centri" }),
+      el("div", { class: "u", testo: p.u || (p.viva ? "Nessuna unità." : "Eliminata.") })])]));
+  });
+  c.append(el("h3", { testo: "I vostri centri" }), el("p", { class: "ris", testo: (S.priv.centri || "Nessuno") + ". Ne servono " + pub.vittoria + " per vincere." }));
+  if (pub.ultima) {
+    c.append(el("h3", { testo: "Ultima fase: " + pub.ultima.t }));
+    let ultimo = -2;
+    for (const r of pub.ultima.r) {
+      if (r[0] >= 0 && r[0] !== ultimo) c.append(el("div", { class: "pot" }, [el("div", { class: "n c" + r[0], testo: POTENZE[r[0]] })]));
+      ultimo = r[0];
+      c.append(el("p", { class: "ris" + (r[2] ? " ko" : ""), testo: r[1] + (r[2] ? "  (" + r[2] + ")" : "") }));
+    }
+  }
+  if (!pub.finita && S.priv.viva && !pub.par) c.append(pulsante("Proponi il pareggio", () => { S.bozza.votato = 1; manda("par", "p"); brindisi("Proposta di pareggio inviata."); }));
+  c.append(el("p", { class: "nota", testo: "Stanza " + S.codice + ". Se chiudete la pagina, riapritela (o inquadrate di nuovo il codice QR) per rientrare." }));
+}
+
+$("velo").addEventListener("click", (e) => { if (e.target === $("velo")) chiudi(); });
+document.addEventListener("focusout", () => setTimeout(() => { if (S.passo === "gioco" && !occupato()) disegna(); }, 200));
+avvio();
+</script>
+</body>
+</html>

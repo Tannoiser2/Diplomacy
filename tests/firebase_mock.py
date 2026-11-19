@@ -56,6 +56,7 @@ class H(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(b)))
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(b)
 
@@ -76,7 +77,8 @@ class H(BaseHTTPRequestHandler):
             val = resolve_sv(json.loads(body)) if body else None
             if method == "PUT":
                 # come nelle regole vere: una mossa numerata si scrive una volta sola
-                if len(parts) >= 2 and parts[-2] == "acts" and get(parts) is not None:
+                una_volta = (len(parts) >= 2 and parts[-2] == "acts") or (len(parts) >= 3 and parts[-3] == "plans")
+                if una_volta and get(parts) is not None:
                     return self._send(401, {"error": "Permission denied"})
                 put(parts, val)
                 return self._send(200, val)
@@ -87,6 +89,15 @@ class H(BaseHTTPRequestHandler):
             if method == "DELETE":
                 put(parts, None)
                 return self._send(200, None)
+
+    def do_OPTIONS(self):
+        # la pagina per telefono chiama da un'altra origine: serve il permesso del browser
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, PUT, PATCH, POST, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def do_GET(self):
         self._db("GET")

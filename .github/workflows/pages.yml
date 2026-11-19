@@ -43,6 +43,9 @@ jobs:
           test -f build/web/index.pck
           touch build/web/.nojekyll
 
+      - name: Aggiunge la pagina per i telefoni
+        run: bash tools/prepara_telefono.sh build/web
+
       # Ludoteca privata: con i segreti CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID pubblica il gioco su
       # https://diplomacy.<dominio>/ protetto da email e codice. Senza segreti non fa nulla.
       - name: Pubblica su Cloudflare (ludoteca privata)

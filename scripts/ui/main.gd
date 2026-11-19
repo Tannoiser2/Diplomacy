@@ -95,14 +95,14 @@ func stanza_richiesta() -> String:
 	return c
 
 
-## L'indirizzo che il QR porta al telefono per entrare nella stanza.
+## L'indirizzo che il QR porta al telefono: la pagina HTML leggera (web/telefono), accanto al gioco.
 static func indirizzo_stanza(codice: String) -> String:
 	var base := "https://tannoiser2.github.io/Diplomacy/"
 	if OS.has_feature("web"):
-		var r = JavaScriptBridge.eval("window.location.origin + window.location.pathname", true)
+		var r = JavaScriptBridge.eval("window.location.origin + window.location.pathname.replace(/[^\\/]*$/, '')", true)
 		if r != null and str(r).begins_with("http"):
 			base = str(r)
-	return base + "?stanza=" + codice
+	return base + "telefono/?stanza=" + codice
 
 
 ## La vista per il telefono: diplomazia e ordini, senza mappa.

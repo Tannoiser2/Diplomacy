@@ -71,8 +71,10 @@ func messaggio(id: int) -> Variant:
 
 ## Spedisce un dispaccio: {da, a, tipo, d, [sincero], [rif], [v]}. Restituisce il messaggio registrato.
 func spedisci(m: Dictionary) -> Dictionary:
-	m["id"] = _id
-	_id += 1
+	# un dispaccio arrivato dal registro online ha già il suo numero (100000 + posizione), uguale per tutti
+	if not (m.has("id") and int(m["id"]) >= 100000):
+		m["id"] = _id
+		_id += 1
 	m["anno"] = g.anno
 	m["fase"] = g.fase
 	if not m.has("d"):

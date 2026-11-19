@@ -43,7 +43,7 @@ func _run() -> void:
 		f.close()
 		while true:
 			var room: Dictionary = await main.net.room(code)
-			if Net._as_dict(room.get("seats", {})).size() >= 2:
+			if Net._as_dict(room.get("seats", {})).size() >= (int(OS.get_environment("DP_ATTESI")) if OS.get_environment("DP_ATTESI") != "" else 2):
 				break
 			await _wait(0.5)
 		await menu._online_start()

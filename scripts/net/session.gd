@@ -314,6 +314,11 @@ func avvia_online(rete: Net, p_codice: String, p_posto: int, p_ruolo: String, ga
 	_pompa()
 	_presenza()
 	if ruolo == "host":
+		# chi ospita serve anche i telefoni che giocano dalla pagina HTML
+		var tel := DPTelefoni.new()
+		add_child(tel)
+		tel.avvia(self)
+	if ruolo == "host":
 		_controlla.call_deferred()
 
 

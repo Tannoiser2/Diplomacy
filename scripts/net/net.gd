@@ -235,7 +235,7 @@ func create_room(player: String, seats: Array, tabellone := false) -> String:
 			continue
 		var body := {"host": uid, "created": {".sv": "timestamp"}, "status": "lobby", "open": seats}
 		if tabellone:
-			body["tabellone"] = true       # chi ospita non gioca: il suo schermo mostra la mappa a tutti
+			body["labels/tabellone"] = true       # chi ospita non gioca: il suo schermo mostra la mappa a tutti
 		else:
 			body["seats/%d" % seats[0]] = {"uid": uid, "name": player}
 		var r := await db_patch(ROOT + "/" + code, body)
@@ -260,7 +260,8 @@ func join_room(code: String, player: String, voglio := -1) -> int:
 	for k in seats:
 		if seats[k] is Dictionary and seats[k].get("uid", "") == uid:
 			return int(k)
-	if room.get("tabellone", false) and room.get("host", "") == uid:
+	var etichette = room.get("labels", {})
+	if etichette is Dictionary and etichette.get("tabellone", false) and room.get("host", "") == uid:
 		return -3
 	if room.get("status", "") != "lobby":
 		# partita già cominciata: si può riprendere un posto lasciato (assente) con lo stesso nome
