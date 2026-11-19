@@ -19,11 +19,19 @@ var tipo := 0
 var par := {}
 
 
+## true sul telefono: le finestre di scrittura si stringono alla larghezza dello schermo.
+var stretta := false
+
+
+func _lc() -> float:
+	return vista.PANNELLO_W - 78.0 if stretta else 560.0
+
+
 func costruisci(corpo: VBoxContainer) -> void:
 	var ses: DPSession = vista.ses
 	var g: DPGame = vista.g
 	var io: int = vista.io
-	var w: float = vista.PANNELLO_W - 60
+	var w: float = vista.PANNELLO_W - (78 if stretta else 60)
 	if io < 0:
 		corpo.add_child(UI.label("I dispacci si scambiano fra le potenze in gioco.", 21, UI.MUTED, null, true, w))
 		return
@@ -267,7 +275,7 @@ func _opzione(testo: String, voci: Array, chiave: String, v: VBoxContainer) -> v
 	v.add_child(UI.label(testo, 20, UI.MUTED))
 	var ob := OptionButton.new()
 	ob.focus_mode = Control.FOCUS_NONE
-	ob.custom_minimum_size = Vector2(560, 50)
+	ob.custom_minimum_size = Vector2(_lc(), 54 if stretta else 50)
 	for i in voci.size():
 		ob.add_item(str(voci[i][0]), i)
 		ob.set_item_metadata(i, voci[i][1])
@@ -389,9 +397,9 @@ func _finestra_componi() -> void:
 			valido = not pot.is_empty()
 			d = {"su": par.get("su", -1)}
 		"libero":
-			v.add_child(UI.label("Il vostro messaggio (le IA rispondono solo alle proposte precise)", 20, UI.MUTED, null, true, 560))
+			v.add_child(UI.label("Il vostro messaggio (le IA rispondono solo alle proposte precise)", 20, UI.MUTED, null, true, _lc()))
 			var le := LineEdit.new()
-			le.custom_minimum_size = Vector2(560, 54)
+			le.custom_minimum_size = Vector2(_lc(), 54)
 			le.max_length = 240
 			le.text = str(par.get("testo", ""))
 			le.text_changed.connect(func(t: String): par["testo"] = t)
@@ -400,10 +408,10 @@ func _finestra_componi() -> void:
 	var m := {"da": io, "a": chi, "tipo": "nota" if k == "disdetta" else k, "d": d, "v": int(par.get("v", 0))}
 	if k != "libero" and valido:
 		var foglio := UI.panel(UI.parch_style())
-		foglio.add_child(UI.label(DPCorte._maiuscola(DPTesti.componi(m, st)), 20, UI.INK, UI.font_tele, true, 540))
+		foglio.add_child(UI.label(DPCorte._maiuscola(DPTesti.componi(m, st)), 20, UI.INK, UI.font_tele, true, _lc() - 20))
 		v.add_child(foglio)
 	elif not valido:
-		v.add_child(UI.label("Non ci sono scelte possibili per questa proposta.", 20, UI.CERA_L, null, true, 560))
+		v.add_child(UI.label("Non ci sono scelte possibili per questa proposta.", 20, UI.CERA_L, null, true, _lc()))
 	var hb := UI.hbox(10)
 	var ok := UI.primary("Spedisci", _spedisci.bind(m), 0, 24)
 	ok.size_flags_horizontal = Control.SIZE_EXPAND_FILL

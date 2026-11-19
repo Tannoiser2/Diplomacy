@@ -220,7 +220,7 @@ func db_delete(path: String) -> Dictionary:
 
 ## Crea una stanza con un codice di 4 lettere. seats: indici delle squadre dei giocatori;
 ## l'host occupa il primo. Restituisce il codice, oppure "" se non ci riesce.
-func create_room(player: String, seats: Array) -> String:
+func create_room(player: String, seats: Array, tabellone := false) -> String:
 	last_error = ""
 	if not await sign_in():
 		return ""
@@ -233,8 +233,11 @@ func create_room(player: String, seats: Array) -> String:
 		var existing := await db_get((ROOT + "/%s/host") % code)
 		if existing["code"] == 200 and existing["data"] != null:
 			continue
-		var body := {"host": uid, "created": {".sv": "timestamp"}, "status": "lobby",
-			"open": seats, ("seats/%d" % seats[0]): {"uid": uid, "name": player}}
+		var body := {"host": uid, "created": {".sv": "timestamp"}, "status": "lobby", "open": seats}
+		if tabellone:
+			body["tabellone"] = true       # chi ospita non gioca: il suo schermo mostra la mappa a tutti
+		else:
+			body["seats/%d" % seats[0]] = {"uid": uid, "name": player}
 		var r := await db_patch(ROOT + "/" + code, body)
 		if r["code"] == 200:
 			return code
@@ -243,7 +246,8 @@ func create_room(player: String, seats: Array) -> String:
 ## Entra in una stanza: occupa il primo posto libero. Restituisce l'indice della squadra, -1 se non c'è posto,
 ## -2 se la stanza non esiste o la partita è già cominciata (e non si aveva un posto).
 ## Chi aveva già un posto lo ritrova, anche a partita iniziata: last_room tiene la stanza letta.
-func join_room(code: String, player: String) -> int:
+## voglio: il posto preferito (se è libero); -3 = sono chi ospita una stanza «tabellone», senza posto.
+func join_room(code: String, player: String, voglio := -1) -> int:
 	last_error = ""
 	if not await sign_in():
 		return -2
@@ -256,6 +260,8 @@ func join_room(code: String, player: String) -> int:
 	for k in seats:
 		if seats[k] is Dictionary and seats[k].get("uid", "") == uid:
 			return int(k)
+	if room.get("tabellone", false) and room.get("host", "") == uid:
+		return -3
 	if room.get("status", "") != "lobby":
 		# partita già cominciata: si può riprendere un posto lasciato (assente) con lo stesso nome
 		for k in seats:
@@ -265,7 +271,13 @@ func join_room(code: String, player: String) -> int:
 				if w["code"] == 200:
 					return int(k)
 		return -2
+	var ordine := []
 	for idx in room.get("open", []):
+		if int(idx) == voglio:
+			ordine.push_front(idx)
+		else:
+			ordine.append(idx)
+	for idx in ordine:
 		if not seats.has(str(int(idx))):
 			var w := await db_put((ROOT + "/%s/seats/%d") % [code, int(idx)], {"uid": uid, "name": player})
 			if w["code"] == 200:

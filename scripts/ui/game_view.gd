@@ -369,6 +369,15 @@ func _riga_testo(t: String, col: Color = UI.TEXT, size := 21) -> Label:
 
 
 func _scheda_ordini() -> void:
+	if io < 0 and ses.online:
+		corpo.add_child(UI.head("Il tabellone", 24))
+		corpo.add_child(_riga_testo("Questo schermo mostra la mappa a tutti. Ognuno tratta e dà gli ordini in segreto dal proprio telefono.", UI.PARCH, 20))
+		if g.finita:
+			corpo.add_child(UI.button("Risultato finale", _fine, 0, 22))
+		else:
+			_riga_attesa()
+		corpo.add_child(UI.button("Codice QR della stanza", _mostra_qr, 0, 22))
+		return
 	if io < 0:
 		corpo.add_child(_riga_testo("State osservando una partita fra sole IA. Con i pulsanti in alto potete leggere centri e potenze; lo Storico conserva ogni fase.", UI.MUTED))
 		return
@@ -920,10 +929,25 @@ func _menu() -> void:
 			if ses.e_umano(p) and p != ses.posto and g.viva(p):
 				v.add_child(UI.button("Affida %s all'IA (giocatore assente)" % DPTesti.CON_ARTICOLO[p], _menu_affida.bind(p), 0, 21))
 	if ses.online:
-		v.add_child(UI.label("Stanza %s" % ses.codice, 22, UI.MUTED))
+		v.add_child(UI.button("Stanza %s: codice QR per i telefoni" % ses.codice, _mostra_qr, 0, 22))
 	v.add_child(UI.button("Regole e consigli", func(): _regole(), 0, 24))
 	v.add_child(UI.button("Torna al menu principale", func(): main.show_menu(), 0, 24))
 	v.add_child(UI.primary("Riprendi", _chiudi_popup, 0, 24))
+
+
+## Il codice QR della stanza: chi lo inquadra con il telefono rientra (o entra) nella partita.
+func _mostra_qr() -> void:
+	var v := _finestra(520)
+	v.add_child(UI.head("Stanza %s" % ses.codice, 34))
+	var qr := TextureRect.new()
+	qr.texture = DPQr.texture(main.indirizzo_stanza(ses.codice), 8)
+	qr.custom_minimum_size = Vector2(380, 380)
+	qr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	qr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	qr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	v.add_child(qr)
+	v.add_child(UI.label("Inquadratelo con il telefono: si apre la pagina con diplomazia e ordini, senza mappa. Chi aveva già un posto lo ritrova.", 21, UI.PARCH, null, true, 480))
+	v.add_child(UI.primary("Chiudi", _chiudi_popup, 0, 24))
 
 
 func _menu_pareggio() -> void:
@@ -1069,6 +1093,8 @@ func _riepilogo(voce: Dictionary, auto := 0.0) -> void:
 	corpo.add_child(b)
 	var t := 0.0
 	var limite := auto if auto > 0.0 else (2.5 if ses.locali.is_empty() else 0.0)
+	if ses.online and ses.locali.is_empty() and limite > 0.0:
+		limite = maxf(limite, 7.0)       # tabellone: il tempo di leggere i risultati tutti insieme
 	if config.get("auto", false):
 		limite = 0.3
 	while _attesa_continua and is_inside_tree():

@@ -66,6 +66,7 @@ Se non ha vie d'uscita è distrutta. Se due unità si ritirano nella stessa prov
 In [b]inverno[/b] le nuove unità nascono solo nei centri di casa liberi: armata o flotta a scelta (la flotta solo sulla costa; a San Pietroburgo si sceglie quale). Chi deve sciogliere e non dà ordini perde le unità più lontane da casa."""],
 	["Comandi di questa versione", """[b]La mappa[/b]: trascinate con un dito (o con il mouse) per spostarla; pizzicate con due dita o usate la rotella per lo zoom; ruotate due dita (o trascinate con il tasto destro) per girare e inclinare la vista.
 Dal Menu si sceglie la carta: il [b]tabellone originale[/b] del gioco steso sul rilievo, oppure la mappa [b]ridisegnata in italiano[/b].
+[b]Telefoni[/b]: in «Gioca online con gli amici» scegliete «Nessuna: questo schermo fa da tabellone» e inquadrate il codice QR della stanza con il telefono. Sul telefono si tratta e si danno gli ordini in segreto, a testo; la mappa resta sullo schermo grande.
 
 [b]Dare un ordine[/b]: toccate una vostra unità, poi la destinazione evidenziata in giallo. In azzurro le coste raggiungibili per convoglio. Con i pulsanti in basso scegliete Sostieni (toccate l'unità da sostenere, poi dove), Convoglia (l'armata, poi lo sbarco) o Ferma.
 

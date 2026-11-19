@@ -19,6 +19,10 @@ Fatta con Godot 4.7 (renderer `gl_compatibility`, esportazione web), tutta in it
 - **Arbitro completo**: movimenti, sostegni, sostegni tagliati, convogli e catene di convogli, movimenti
   circolari, paradossi dei convogli (regola di Szykman), ritirate, costruzioni e scioglimenti. Verificato con
   i casi DATC e con migliaia di posizioni casuali contro un motore di riferimento.
+- **Tabellone e telefoni**: chi crea la stanza può scegliere di non giocare e lasciare lo schermo (TV, tablet,
+  computer) come tabellone per tutti. Ognuno inquadra il **codice QR** della stanza con il telefono e da lì fa
+  la parte segreta: diplomazia (dispacci, proposte e risposte a IA e persone) e ordini alle proprie unità,
+  tutto a testo, senza mappa. Chi chiude la pagina rientra riaprendo lo stesso indirizzo.
 - **Diplomazia con le IA**: la scheda «Diplomazia» apre il quadro dei rapporti con ogni potenza (accordi in
   vigore, posta da leggere) e, toccandone una, la corrispondenza con le proposte rapide (alleanza, pace,
   sostegno) e la disdetta leale degli accordi.
@@ -88,6 +92,8 @@ xvfb-run godot --path . --script tests/shot.gd -- /tmp/foto  # fotografie di tut
 python3 tools/controlla_glifi.py                             # ogni carattere dei testi esiste nei font
 ```
 
+`tests/telefono.gd` fotografa e prova la vista per il telefono, `tests/telefono_online.sh` gioca una partita con
+tabellone e due telefoni sul finto Firebase, `tests/qr.gd` scrive i codici QR da rileggere con un lettore.
 `tests/mappa.gd` controlla che pedine e stelle cadano nella provincia giusta su entrambe le carte.
 
 La mappa ridisegnata si rigenera con `python3 tools/costruisci_mappa.py` (serve `pip install diplomacy numpy scipy

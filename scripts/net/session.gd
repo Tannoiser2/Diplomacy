@@ -286,7 +286,7 @@ func avvia_online(rete: Net, p_codice: String, p_posto: int, p_ruolo: String, ga
 		umani.append(ruolo != "host" or e_umano(p))
 	corte.crea(g, umani, int(cfg["livello"]), int(cfg["seme"]))
 	corte.su_messaggio = _su_messaggio
-	locali = [posto]
+	locali = [posto] if posto >= 0 else []
 	# recupero di una partita già iniziata
 	recupero = true
 	var foto = null
@@ -347,7 +347,7 @@ func _pompa() -> void:
 
 
 func _presenza() -> void:
-	while vivo:
+	while vivo and posto >= 0:
 		net.heartbeat(codice, posto)
 		await get_tree().create_timer(8.0).timeout
 

@@ -234,8 +234,10 @@ func _online_panel() -> void:
 	rn.add_child(on_name)
 	destra.add_child(rn)
 	destra.add_child(UI.head("Creare una stanza", 25, UI.PARCH))
-	destra.add_child(_scelta("La vostra potenza", DPMap.POTENZE, mio_posto, _scegli_posto))
-	destra.add_child(UI.label("Posti per gli amici (gli altri li guida l'IA):", 21, UI.MUTED, null, true, 700))
+	var scelte: Array = Array(DPMap.POTENZE).duplicate()
+	scelte.append("Nessuna: questo schermo fa da tabellone")
+	destra.add_child(_scelta("La vostra potenza", scelte, mio_posto if mio_posto >= 0 else 7, _scegli_posto))
+	destra.add_child(UI.label("Posti per gli amici (gli altri li guida l'IA). Si entra anche dal telefono, inquadrando il codice QR della stanza:" if mio_posto >= 0 else "Tutti giocano dal telefono, inquadrando il codice QR: qui resta la mappa. Scegliete le potenze disponibili (le altre le guida l'IA):", 21, UI.MUTED, null, true, 700))
 	var griglia := GridContainer.new()
 	griglia.columns = 3
 	griglia.add_theme_constant_override("h_separation", 16)
@@ -272,7 +274,7 @@ func _online_panel() -> void:
 
 
 func _scegli_posto(i: int) -> void:
-	mio_posto = i
+	mio_posto = i if i < 7 else -1
 	_apri("online")
 
 
@@ -283,14 +285,18 @@ func _nome() -> String:
 
 func _online_create() -> void:
 	var net: Net = main.get_net()
-	var seats := [mio_posto]
+	var seats := [mio_posto] if mio_posto >= 0 else []
 	for p in 7:
 		if p != mio_posto and aperti[p]:
 			seats.append(p)
+	if seats.is_empty():
+		messaggio = "Scegliete almeno una potenza per chi gioca dal telefono."
+		_apri("online")
+		return
 	messaggio = "Creo la stanza…"
 	var nome := _nome()
 	_apri("online")
-	var code := await net.create_room(nome, seats)
+	var code := await net.create_room(nome, seats, mio_posto < 0)
 	if not is_inside_tree():
 		return
 	if code == "":
@@ -317,11 +323,13 @@ func _online_join() -> void:
 	var seat := await net.join_room(code, nome)
 	if not is_inside_tree():
 		return
-	if seat < 0:
+	if seat < 0 and seat != -3:
 		messaggio = "La stanza non esiste, è piena o la partita è già cominciata. %s" % net.last_error
 		_apri("online")
 		return
 	net._save({"name": nome})
+	if seat == -3:
+		seat = -1                     # chi ospita una stanza «tabellone» non ha un posto
 	net.remember_room(code, seat)
 	messaggio = ""
 	var room: Dictionary = net.last_room
@@ -333,9 +341,21 @@ func _online_join() -> void:
 
 
 func _pannello_lobby() -> void:
-	var cl := UI.head("Stanza %s" % lobby["code"], 60)
-	destra.add_child(cl)
-	destra.add_child(UI.label("Date questo codice agli amici: lo scrivono in «Entrare in una stanza».", 22, UI.MUTED, UI.font_ital, true, 700))
+	var su := UI.hbox(20)
+	var sx := UI.vbox(8)
+	sx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sx.add_child(UI.head("Stanza %s" % lobby["code"], 60))
+	sx.add_child(UI.label("Dal telefono: inquadrate il codice QR. Si apre la pagina con diplomazia e ordini, senza mappa.", 21, UI.PARCH, null, true, 420))
+	sx.add_child(UI.label("Da un altro computer o tablet: scrivete il codice in «Entrare in una stanza».", 20, UI.MUTED, UI.font_ital, true, 420))
+	su.add_child(sx)
+	var qr := TextureRect.new()
+	qr.texture = DPQr.texture(main.indirizzo_stanza(lobby["code"]), 8)
+	qr.custom_minimum_size = Vector2(250, 250)
+	qr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	qr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	qr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	su.add_child(qr)
+	destra.add_child(su)
 	var elenco := UI.vbox(6)
 	elenco.name = "Elenco"
 	destra.add_child(elenco)
@@ -400,6 +420,10 @@ func _online_start() -> void:
 	for p in 7:
 		s += "u" if seats.has(str(p)) else "i"
 		nomi.append(str(seats[str(p)].get("name", "")) if seats.has(str(p)) else "")
+	if seats.is_empty():
+		messaggio = "Nessuno è ancora entrato nella stanza."
+		_apri("online")
+		return
 	var game := {"seme": randi() % 1000000, "livello": livello, "ultimo_anno": DURATE[durata][1], "posti": s, "nomi": nomi}
 	if not await net.start_room(lobby["code"], game):
 		messaggio = "Non riesco ad avviare la partita. %s" % net.last_error
