@@ -1,6 +1,6 @@
 extends RefCounted
-## La scheda «Dispacci»: le conversazioni con le altre potenze, come telegrammi su carta, le risposte
-## alle proposte e la scrittura di un nuovo dispaccio (alleanze, patti, zone sgombre, sostegni…).
+## La scheda «Diplomazia»: il quadro dei rapporti con le altre potenze, le conversazioni come telegrammi
+## su carta, le risposte alle proposte e la scrittura di un nuovo dispaccio (alleanze, patti, sostegni…).
 
 const TIPI := [
 	["alleanza", "Alleanza contro una potenza"],
@@ -11,6 +11,7 @@ const TIPI := [
 	["chiedi_mossa", "Chiedere un ordine"],
 	["info", "Informazione riservata"],
 	["libero", "Messaggio libero"],
+	["disdetta", "Disdire gli accordi presi"],
 ]
 
 var vista
@@ -26,46 +27,15 @@ func costruisci(corpo: VBoxContainer) -> void:
 	if io < 0:
 		corpo.add_child(UI.label("I dispacci si scambiano fra le potenze in gioco.", 21, UI.MUTED, null, true, w))
 		return
-	# chi è l'interlocutore
-	if vista.con_chi < 0 or vista.con_chi == io:
+	if vista.con_chi == io:
 		vista.con_chi = -1
-		for p in 7:
-			if p != io and g.viva(p) and vista.con_chi < 0:
-				vista.con_chi = p
-		for m in ses.corte.posta_di(io):
-			if m["a"] == io and not m.get("letto", false):
-				vista.con_chi = m["da"]
 	var chi: int = vista.con_chi
-	var riga := UI.hbox(4)
-	corpo.add_child(riga)
-	for p in 7:
-		if p == io:
-			continue
-		var b := Button.new()
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(62, 50)
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var fr := UI.flag_rect(p, 26)
-		fr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		fr.offset_left = 6
-		fr.offset_right = -6
-		fr.offset_top = 6
-		fr.offset_bottom = -6
-		b.add_child(fr)
-		var nl := 0
-		for m in ses.corte.posta_di(io):
-			if m["da"] == p and m["a"] == io and not m.get("letto", false):
-				nl += 1
-		var st := UI.panel_style(Color("#5a4326") if p == chi else UI.PANEL_L, UI.CERA_L if nl > 0 else (UI.OTTONE_L if p == chi else Color(UI.OTTONE, 0.4)), 3 if (p == chi or nl > 0) else 1, 6, 4)
-		b.add_theme_stylebox_override("normal", st)
-		b.add_theme_stylebox_override("hover", st)
-		b.add_theme_stylebox_override("pressed", st)
-		b.modulate = Color(1, 1, 1, 1) if g.viva(p) else Color(1, 1, 1, 0.3)
-		b.tooltip_text = DPMap.POTENZE[p]
-		b.pressed.connect(vista._apri_conversazione.bind(p))
-		riga.add_child(b)
 	if chi < 0:
+		_quadro(corpo, w)
 		return
+	var torna := UI.button("Quadro diplomatico", vista._apri_conversazione.bind(-1), 0, 20)
+	torna.custom_minimum_size.x = 200
+	corpo.add_child(torna)
 	var intest := "%s (%s)" % [DPTesti.maiuscola(DPTesti.CANCELLERIE[chi]), DPMap.POTENZE_BREVI[chi]]
 	corpo.add_child(UI.head(intest, 22))
 	var chi_e := "Guidata da %s." % ses.nome(chi) if ses.e_umano(chi) else "Guidata dall'IA (%s)." % DPCorte.NOMI_LIVELLO[ses.corte.livello]
@@ -85,7 +55,97 @@ func costruisci(corpo: VBoxContainer) -> void:
 			m["letto"] = true
 	_in_fondo.call_deferred(sc)
 	if g.viva(chi) and not g.finita:
-		corpo.add_child(UI.primary("Nuovo dispaccio", componi, 0, 23))
+		# le proposte più usate a portata di dito; tutto il resto in «Altro dispaccio»
+		var sost: bool = g.e_movimento() and g.st.n_unita(chi) > 0 and g.st.n_unita(io) > 0
+		var gr := GridContainer.new()
+		gr.columns = 2
+		gr.add_theme_constant_override("h_separation", 6)
+		gr.add_theme_constant_override("v_separation", 6)
+		corpo.add_child(gr)
+		for x in [["Proponi alleanza", 0, true], ["Proponi pace", 1, true], ["Chiedi sostegno", 3, sost], ["Altro dispaccio", -1, true]]:
+			var b: Button = UI.primary(x[0], componi_tipo.bind(x[1]), 0, 20) if x[1] >= 0 else UI.button(x[0], componi, 0, 20)
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			b.custom_minimum_size = Vector2(180, 50)
+			b.disabled = not x[2]
+			gr.add_child(b)
+
+
+## Il quadro diplomatico: una riga per potenza con accordi in vigore, ultimo scambio e posta da leggere.
+func _quadro(corpo: VBoxContainer, w: float) -> void:
+	var ses: DPSession = vista.ses
+	var g: DPGame = vista.g
+	var io: int = vista.io
+	corpo.add_child(UI.head("Quadro diplomatico", 23))
+	corpo.add_child(UI.label("Toccate una potenza per trattare: alleanze, patti, sostegni. Nessuno è obbligato a mantenere la parola.", 17, UI.MUTED, UI.font_ital, true, w))
+	var lista := UI.vbox(6)
+	var sc := UI.scroll(lista)
+	corpo.add_child(sc)
+	for p in 7:
+		if p == io:
+			continue
+		var nl := 0
+		var scambi := 0
+		for m in ses.corte.posta_di(io):
+			if m["da"] == p and m["a"] == io:
+				scambi += 1
+				if not m.get("letto", false):
+					nl += 1
+			elif m["da"] == io and m["a"] == p:
+				scambi += 1
+		var acc := _elenco_accordi(io, p)
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(w, 86)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var bordo: Color = UI.CERA_L if nl > 0 else (Color("#5fae5f") if not acc.is_empty() else Color(UI.OTTONE, 0.5))
+		var stile := UI.panel_style(UI.PANEL_L, bordo, 3 if (nl > 0 or not acc.is_empty()) else 1, 6, 6)
+		b.add_theme_stylebox_override("normal", stile)
+		b.add_theme_stylebox_override("hover", stile)
+		b.add_theme_stylebox_override("pressed", stile)
+		var hb := UI.hbox(10)
+		hb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		hb.offset_left = 8
+		hb.offset_right = -8
+		hb.offset_top = 6
+		hb.offset_bottom = -6
+		hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var fr := UI.flag_rect(p, 34)
+		fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		hb.add_child(fr)
+		var v := UI.vbox(0)
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.alignment = BoxContainer.ALIGNMENT_CENTER
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var titolo := "%s - %d centri" % [DPMap.POTENZE[p], g.st.n_centri(p)]
+		var tl := UI.head(titolo, 19, Color.WHITE)
+		tl.clip_text = true
+		tl.custom_minimum_size.x = w - 80
+		tl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(tl)
+		var stato := ""
+		var col: Color = UI.MUTED
+		if not g.viva(p):
+			stato = "Eliminata."
+		elif not acc.is_empty():
+			stato = DPCorte._maiuscola("; ".join(acc)) + "."
+			col = Color("#8fd08f")
+		elif scambi == 0:
+			stato = "Nessun contatto finora."
+		else:
+			stato = "Nessun accordo in vigore."
+		if nl > 0:
+			stato = "%s da leggere. %s" % ["1 dispaccio" if nl == 1 else "%d dispacci" % nl, stato]
+			col = UI.CERA_L if acc.is_empty() else col
+		var sl := UI.label(stato, 16, col, null, true, w - 80)
+		sl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sl.max_lines_visible = 2
+		v.add_child(sl)
+		hb.add_child(v)
+		b.add_child(hb)
+		b.modulate = Color(1, 1, 1, 1) if g.viva(p) else Color(1, 1, 1, 0.4)
+		b.pressed.connect(vista._apri_conversazione.bind(p))
+		lista.add_child(b)
 
 
 func _in_fondo(sc: ScrollContainer) -> void:
@@ -93,26 +153,35 @@ func _in_fondo(sc: ScrollContainer) -> void:
 		sc.scroll_vertical = 1000000
 
 
-## Riassunto degli accordi accettati fra due potenze (dalle risposte nei dispacci).
-func _accordi(io: int, chi: int) -> String:
+## Gli accordi accettati fra due potenze e ancora in vigore: una disdetta cancella quelli presi prima.
+func _elenco_accordi(io: int, chi: int) -> Array:
 	var ses: DPSession = vista.ses
 	var visti := {}
 	for m in ses.corte.posta_di(io):
-		if m.get("esito", "") != "si":
-			continue
 		if not ((m["da"] == chi and m["a"] == io) or (m["da"] == io and m["a"] == chi)):
+			continue
+		if m["tipo"] == "nota" and m["d"].get("k", "") == "disdetta":
+			visti.clear()
+			continue
+		if m.get("esito", "") != "si":
 			continue
 		match m["tipo"]:
 			"alleanza":
-				visti["alleanza contro %s (%d)" % [DPTesti.CON_ARTICOLO[int(m["d"]["contro"])], m["anno"]]] = true
+				if vista.g.viva(int(m["d"]["contro"])):
+					visti["alleanza contro %s (%d)" % [DPTesti.CON_ARTICOLO[int(m["d"]["contro"])], m["anno"]]] = true
 			"pace":
 				visti["non aggressione (%d)" % m["anno"]] = true
 			"dmz":
 				if vista.g.anno - int(m["anno"]) < 2:
 					visti["zona sgombra: %s" % DPTesti.province(m["d"]["prov"])] = true
-	if visti.is_empty():
+	return visti.keys()
+
+
+func _accordi(io: int, chi: int) -> String:
+	var acc := _elenco_accordi(io, chi)
+	if acc.is_empty():
 		return "Nessun accordo in vigore."
-	return "Accordi: " + "; ".join(visti.keys()) + "."
+	return "Accordi: " + "; ".join(acc) + "."
 
 
 func _foglio(m: Dictionary, io: int, w: float) -> Control:
@@ -165,6 +234,12 @@ func rispondi(m: Dictionary, si: bool) -> void:
 
 func componi() -> void:
 	par = {}
+	_finestra_componi()
+
+
+## Apre la scrittura già sul tipo di proposta scelto (0 alleanza, 1 pace, 3 chiedere un sostegno…).
+func componi_tipo(i: int) -> void:
+	par = {"tipo": i}
 	_finestra_componi()
 
 
@@ -233,6 +308,8 @@ func _finestra_componi() -> void:
 	for i in TIPI.size():
 		var k: String = TIPI[i][0]
 		if k in ["chiedi_sost", "offri_sost", "chiedi_mossa"] and (not g.e_movimento() or st.n_unita(chi) == 0 or st.n_unita(io) == 0):
+			continue
+		if k == "disdetta" and _elenco_accordi(io, chi).is_empty():
 			continue
 		tipi.append([TIPI[i][1], i])
 	_opzione("Che cosa proponete", tipi, "tipo", v)
@@ -320,7 +397,7 @@ func _finestra_componi() -> void:
 			le.text_changed.connect(func(t: String): par["testo"] = t)
 			v.add_child(le)
 			d = {"testo": ""}
-	var m := {"da": io, "a": chi, "tipo": k, "d": d, "v": int(par.get("v", 0))}
+	var m := {"da": io, "a": chi, "tipo": "nota" if k == "disdetta" else k, "d": d, "v": int(par.get("v", 0))}
 	if k != "libero" and valido:
 		var foglio := UI.panel(UI.parch_style())
 		foglio.add_child(UI.label(DPCorte._maiuscola(DPTesti.componi(m, st)), 20, UI.INK, UI.font_tele, true, 540))

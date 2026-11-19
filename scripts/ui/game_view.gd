@@ -70,6 +70,7 @@ func _ready() -> void:
 	ses.risolta.connect(_su_risolta)
 	ses.posta.connect(_su_posta)
 	ses.avviso.connect(_su_avviso)
+	_benvenuto()
 	ses.pareggio_proposto.connect(_su_pareggio)
 	_su_aggiornata()
 
@@ -125,7 +126,7 @@ func _costruisci() -> void:
 	pannello.add_child(pv)
 	var tabs := UI.hbox(6)
 	pv.add_child(tabs)
-	for k in [["ordini", "Ordini"], ["dispacci", "Dispacci"], ["storico", "Storico"]]:
+	for k in [["ordini", "Ordini"], ["dispacci", "Diplomazia"], ["storico", "Storico"]]:
 		var b := UI.button(k[1], _apri_scheda.bind(k[0]), 0, 21)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.custom_minimum_size.x = 120
@@ -183,6 +184,38 @@ func _apri_scheda(k: String) -> void:
 	_aggiorna_pannello()
 
 
+## La prima volta, a inizio partita, ricorda che prima degli ordini si tratta: è il cuore del gioco.
+func _benvenuto() -> void:
+	await get_tree().create_timer(0.8).timeout
+	if not is_inside_tree() or io < 0 or not g.storia.is_empty() or g.finita or _popup != null:
+		return
+	var c := ConfigFile.new()
+	c.load(DPMap.FILE_OPZIONI)
+	if bool(c.get_value("aiuto", "diplomazia", false)):
+		return
+	c.set_value("aiuto", "diplomazia", true)
+	c.save(DPMap.FILE_OPZIONI)
+	var v := _finestra(660)
+	v.add_child(UI.head("Prima si tratta, poi si ordina", 28))
+	v.add_child(UI.label("Le altre potenze vi scrivono e aspettano le vostre proposte: alleanze contro un nemico comune, patti di non aggressione, zone sgombre, sostegni per una mossa precisa.", 21, UI.TEXT, null, true, 620))
+	v.add_child(UI.label("Nella scheda Diplomazia trovate il quadro dei rapporti con ogni potenza; toccatene una (o la sua bandiera in alto) per leggere i dispacci, rispondere e proporre. Le IA ricordano chi mantiene la parola e chi no - e a volte mentono anche loro.", 21, UI.TEXT, null, true, 620))
+	var hb := UI.hbox(10)
+	var apri := UI.primary("Apri la Diplomazia", _benvenuto_apri, 0, 24)
+	apri.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var no := UI.button("Ho capito", _chiudi_popup, 0, 24)
+	no.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hb.add_child(apri)
+	hb.add_child(no)
+	v.add_child(hb)
+
+
+func _benvenuto_apri() -> void:
+	_chiudi_popup()
+	con_chi = -1
+	_apri_scheda("dispacci")
+
+
+## Apre la corrispondenza con una potenza (-1: il quadro diplomatico con tutte).
 func _apri_conversazione(p: int) -> void:
 	if p == io or in_replay or io < 0:
 		return
@@ -313,7 +346,7 @@ func _aggiorna_pannello() -> void:
 	for k in schede_btn:
 		var b: Button = schede_btn[k]
 		b.add_theme_color_override("font_color", Color.WHITE if k == scheda else UI.OTTONE_L)
-		var testo: String = {"ordini": "Ordini", "dispacci": "Dispacci", "storico": "Storico"}[k]
+		var testo: String = {"ordini": "Ordini", "dispacci": "Diplomazia", "storico": "Storico"}[k]
 		if k == "dispacci" and io >= 0:
 			var nl := ses.corte.da_leggere(io)
 			if nl > 0:
@@ -783,7 +816,7 @@ func _aggiorna_attrezzi() -> void:
 		return
 	attrezzi.visible = true
 	if sel < 0:
-		suggerimento.text = "Toccate una vostra unità per darle un ordine. Senza ordini resta ferma."
+		suggerimento.text = "Toccate una vostra unità per darle un ordine. Per alleanze e patti: scheda Diplomazia, o la bandiera di una potenza."
 		return
 	var st := g.st
 	var nome := "%s %s" % [DPGame.nome_unita(st.ut[sel]), DPMap.nome_loc(st.ul[sel])]

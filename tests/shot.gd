@@ -57,6 +57,10 @@ func _run(w: int, h: int) -> void:
 	ses.avvia()
 	await _aspetta(1.5)
 	var v = main.current
+	if v._popup != null:
+		await _snap("09_benvenuto")
+		v._chiudi_popup()
+		await _aspetta(0.2)
 	await _snap("10_partita")
 	var ven: int = DPMap.per_sigla["VEN"]
 	var rom: int = DPMap.per_sigla["ROM"]
@@ -68,8 +72,11 @@ func _run(w: int, h: int) -> void:
 	v._seleziona(ven)
 	v._apri_scheda("dispacci")
 	await _aspetta(0.3)
-	await _snap("13_dispacci")
-	v.dispacci_ui.componi()
+	await _snap("13_quadro_diplomatico")
+	v._apri_conversazione(5)
+	await _aspetta(0.3)
+	await _snap("13b_conversazione")
+	v.dispacci_ui.componi_tipo(0)
 	await _aspetta(0.3)
 	await _snap("14_nuovo_dispaccio")
 	v.con_chi = 0
@@ -82,7 +89,9 @@ func _run(w: int, h: int) -> void:
 		if m["a"] == 4 and DPTesti.e_proposta(m["tipo"]) and m.get("esito", "") == "":
 			v.dispacci_ui.rispondi(m, true)
 			break
-	await _snap("16_dispacci_risposta")
+	v._apri_conversazione(-1)
+	await _aspetta(0.2)
+	await _snap("16_quadro_dopo_accordo")
 	v._menu()
 	await _snap("17_menu_partita")
 	v._chiudi_popup()

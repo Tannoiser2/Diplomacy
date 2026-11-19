@@ -19,6 +19,9 @@ Fatta con Godot 4.7 (renderer `gl_compatibility`, esportazione web), tutta in it
 - **Arbitro completo**: movimenti, sostegni, sostegni tagliati, convogli e catene di convogli, movimenti
   circolari, paradossi dei convogli (regola di Szykman), ritirate, costruzioni e scioglimenti. Verificato con
   i casi DATC e con migliaia di posizioni casuali contro un motore di riferimento.
+- **Diplomazia con le IA**: la scheda «Diplomazia» apre il quadro dei rapporti con ogni potenza (accordi in
+  vigore, posta da leggere) e, toccandone una, la corrispondenza con le proposte rapide (alleanza, pace,
+  sostegno) e la disdetta leale degli accordi.
 - **Dispacci diplomatici** come telegrammi: alleanze, patti di non aggressione, zone sgombre, richieste e
   offerte di sostegno, informazioni riservate (vere o false), proposte di pareggio.
 - **IA da torneo** a tre livelli (Console, Ambasciatore, Gran Maestro): vedi sotto.

@@ -71,7 +71,7 @@ Dal Menu si sceglie la carta: il [b]tabellone originale[/b] del gioco steso sul 
 
 [b]Consegnare[/b]: gli ordini restano modificabili finché non premete «Consegna gli ordini». Sono segreti: nessuno li vede prima della risoluzione.
 
-[b]Dispacci[/b]: toccate la bandiera di una potenza per aprire la corrispondenza. Potete proporre alleanze, patti di non aggressione, zone sgombre, chiedere o offrire sostegni. Le IA rispondono subito... ma, come voi, non sono obbligate a mantenere la parola.
+[b]Diplomazia[/b]: la scheda «Diplomazia» mostra il quadro dei rapporti con ogni potenza (accordi in vigore, posta da leggere); toccate una potenza, o la sua bandiera in alto, per aprire la corrispondenza. Potete proporre alleanze, patti di non aggressione, zone sgombre, chiedere o offrire sostegni. Le IA rispondono subito... ma, come voi, non sono obbligate a mantenere la parola.
 
 [b]Storico[/b]: ogni fase risolta si può rivedere sulla mappa con ordini ed esiti.
 
