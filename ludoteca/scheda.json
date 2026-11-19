@@ -1,0 +1,10 @@
+{
+  "titolo": "Diplomacy",
+  "sottotitolo": "accordi, sotterfugi e tradimenti",
+  "descrizione": "Il classico di Allan B. Calhamer: Europa, 1901, sette potenze, nessun dado. Si scrivono ordini segreti, si tratta con tutti e si tradisce al momento giusto: vince chi arriva a 18 centri. Mappa 3D in rilievo con cannoni e corazzate, arbitro completo delle regole (sostegni, convogli, ritirate, aggiustamenti), dispacci diplomatici in stile telegramma e IA da torneo che stringono alleanze, promettono sostegni, mentono e pugnalano alle spalle; a fine partita si aprono i loro archivi segreti. Da 1 a 7 giocatori, online con gli amici e partite salvate su Firebase, tutto in italiano.",
+  "online": true,
+  "sezione": "conversione",
+  "ordine": 203,
+  "bgg": 483,
+  "generi": ["Storici", "Wargame"]
+}
