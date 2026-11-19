@@ -15,7 +15,7 @@ WEB=$!
 sleep 1
 export DP_DB_URL=http://127.0.0.1:8768/db DP_AUTH_URL=http://127.0.0.1:8768/signup DP_REFRESH_URL=http://127.0.0.1:8768/refresh
 rm -f /tmp/dp_codice4.txt /tmp/dp_tav4.cfg
-DP_ROLE=tavolo DP_ATTESI=1 DP_CODEFILE=/tmp/dp_codice4.txt DP_SESSION=/tmp/dp_tav4.cfg $G --headless --path . --script tests/telefono_online.gd > /tmp/dp_tav4.log 2>&1 &
+DP_ATTESI=1 DP_CODEFILE=/tmp/dp_codice4.txt DP_SESSION=/tmp/dp_tav4.cfg $G --headless --path . --script tests/tavolo.gd > /tmp/dp_tav4.log 2>&1 &
 TAV=$!
 node tests/web/telefono_pagina.js "http://127.0.0.1:8098/telefono/?rtdb=http://127.0.0.1:8768/db" /tmp/dp_codice4.txt "$FOTO"
 ESITO=$?

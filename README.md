@@ -95,7 +95,7 @@ python3 tools/controlla_glifi.py                             # ogni carattere de
 ```
 
 `tests/telefono_pagina.sh` apre la pagina HTML dei telefoni in Chrome e gioca l'Italia contro un tabellone vero
-sul finto Firebase; `tests/telefono.gd` e `tests/telefono_online.sh` provano la stessa cosa con la vista interna al gioco; `tests/qr.gd` scrive i codici QR da rileggere con un lettore.
+sul finto Firebase (`tests/tavolo.gd`); `tests/qr.gd` scrive i codici QR da rileggere con un lettore.
 `tests/mappa.gd` controlla che pedine e stelle cadano nella provincia giusta su entrambe le carte.
 
 La mappa ridisegnata si rigenera con `python3 tools/costruisci_mappa.py` (serve `pip install diplomacy numpy scipy
