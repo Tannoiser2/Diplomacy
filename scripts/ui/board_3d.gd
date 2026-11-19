@@ -20,6 +20,7 @@ uniform sampler2D quota : filter_linear;
 uniform sampler2D tavolozza : filter_nearest;
 uniform float rilievo = 0.26;
 uniform float tempo = 0.0;
+uniform float reale = 0.0;
 void vertex() {
 	float h = texture(quota, UV).r;
 	VERTEX.y += h * rilievo;
@@ -30,21 +31,26 @@ void vertex() {
 }
 void fragment() {
 	vec3 col = texture(carta, UV).rgb;
+	if (reale > 0.5) col *= 0.8;   // la stampa è chiara: senza questo la Russia brucia sotto la lampada
 	ivec2 ts = textureSize(idmap, 0);
 	vec4 idc = texelFetch(idmap, ivec2(UV * vec2(ts)), 0);
 	int id = int(floor(idc.r * 255.0 + 0.5));
 	bool terra = idc.g > 0.5;
 	vec4 tinta = texelFetch(tavolozza, ivec2(id, 0), 0);
 	vec4 luce = texelFetch(tavolozza, ivec2(id, 1), 0);
-	if (terra) {
-		col = mix(col, col * 0.42 + tinta.rgb * 0.62, tinta.a);
+	// sul tabellone originale tinte e luci sfumano verso i confini della provincia
+	float sfuma = reale > 0.5 ? smoothstep(2.0, 18.0, idc.a * 255.0) : 1.0;
+	if (id == 0 && reale > 0.5) {
+		// cornice stampata e terre fuori gioco: la carta così com'è
+	} else if (terra) {
+		col = mix(col, col * 0.42 + tinta.rgb * 0.62, tinta.a * (reale > 0.5 ? 0.85 * sfuma : 1.0));
 	} else {
 		float o = sin(UV.x * 260.0 + tempo * 0.7 + sin(UV.y * 120.0 + tempo * 0.45) * 2.5) * sin(UV.y * 210.0 - tempo * 0.55);
 		col += vec3(0.016, 0.02, 0.022) * o;
 		float riva = 1.0 - clamp(idc.b * 255.0 / 28.0, 0.0, 1.0);
 		col += vec3(0.05) * riva * (0.5 + 0.5 * sin(tempo * 1.1 - idc.b * 255.0 * 0.35));
 	}
-	col = mix(col, luce.rgb, luce.a * (0.48 + 0.16 * sin(tempo * 4.0)));
+	col = mix(col, luce.rgb, luce.a * sfuma * (0.48 + 0.16 * sin(tempo * 4.0)));
 	ALBEDO = col;
 	ROUGHNESS = terra ? 0.95 : 0.5;
 	SPECULAR = terra ? 0.05 : 0.3;
@@ -162,10 +168,11 @@ func setup() -> void:
 	filo.material_override = _materiale(Color("#b08f45"), 0.35, 0.7)
 	vp.add_child(filo)
 	# la carta in rilievo
-	var ci := _immagine("res://assets/mappa/base.jpg")
+	var cartella := "res://assets/mappa_reale/" if DPMap.reale else "res://assets/mappa/"
+	var ci := _immagine(cartella + "base.jpg")
 	ci.generate_mipmaps()
-	id_img = _immagine("res://assets/mappa/id.png")
-	quota_img = _immagine("res://assets/mappa/quota.png")
+	id_img = _immagine(cartella + "id.png")
+	quota_img = _immagine(cartella + "quota.png")
 	tav_img = Image.create(256, 2, false, Image.FORMAT_RGBA8)
 	tav_tex = ImageTexture.create_from_image(tav_img)
 	var sh := Shader.new()
@@ -177,6 +184,7 @@ func setup() -> void:
 	mat_mappa.set_shader_parameter("quota", ImageTexture.create_from_image(quota_img))
 	mat_mappa.set_shader_parameter("tavolozza", tav_tex)
 	mat_mappa.set_shader_parameter("rilievo", RILIEVO)
+	mat_mappa.set_shader_parameter("reale", 1.0 if DPMap.reale else 0.0)
 	var mappa := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(mw, mh)
@@ -270,6 +278,8 @@ static func _spezza(n: String) -> String:
 
 
 func _crea_etichette() -> void:
+	if DPMap.reale:
+		return   # il tabellone originale porta già i suoi nomi stampati
 	for i in DPMap.N_PROV:
 		var l := Label3D.new()
 		var mare := DPMap.tipo[i] == DPMap.MARE

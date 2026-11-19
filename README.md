@@ -10,8 +10,9 @@ Fatta con Godot 4.7 (renderer `gl_compatibility`, esportazione web), tutta in it
 
 ## Che cosa c'è
 
-- **Mappa 3D in rilievo**: la carta d'Europa rifatta da zero (pergamena, confini a inchiostro, monti che si
-  alzano dalla carta, mari animati) su un tavolo di mogano. Si sposta, si ingrandisce e si ruota con mouse e
+- **Mappa 3D in rilievo**, in due vesti che si scambiano dal Menu: il **tabellone originale** del gioco
+  steso sul rilievo (monti che si alzano dalla stampa, mari animati) oppure la carta d'Europa **ridisegnata
+  in italiano** (pergamena, confini a inchiostro), su un tavolo di mogano. Si sposta, si ingrandisce e si ruota con mouse e
   rotella oppure con le dita su iPad (un dito trascina, due pizzicano e ruotano).
 - **Pedine 3D**: cannone da campagna e corazzata modellati per questa versione, oppure il carro e la nave
   del modulo di Tabletop Simulator (si cambia dal Menu).
@@ -84,8 +85,13 @@ xvfb-run godot --path . --script tests/shot.gd -- /tmp/foto  # fotografie di tut
 python3 tools/controlla_glifi.py                             # ogni carattere dei testi esiste nei font
 ```
 
-La mappa si rigenera con `python3 tools/costruisci_mappa.py` (serve `pip install diplomacy numpy scipy
+`tests/mappa.gd` controlla che pedine e stelle cadano nella provincia giusta su entrambe le carte.
+
+La mappa ridisegnata si rigenera con `python3 tools/costruisci_mappa.py` (serve `pip install diplomacy numpy scipy
 pillow`), le pedine con `tools/costruisci_modelli.py`, bandiere e sfondi con `tools/costruisci_grafica.py`.
+
+Il tabellone originale (`data/mappa_reale.json`, `assets/mappa_reale/`) è ricavato dalla scansione del
+modulo di Tabletop Simulator con gli script di `tools/mappa_reale/` (vedi il LEGGIMI in quella cartella).
 
 ## Pubblicazione
 

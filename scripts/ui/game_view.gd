@@ -53,6 +53,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ses = config["sessione"]
 	g = ses.g
+	DPMap.usa(DPMap.preferenza())
 	board = preload("res://scripts/ui/board_3d.gd").new()
 	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(board)
@@ -878,6 +879,7 @@ func _menu() -> void:
 		v.add_child(UI.button("Salva la partita in rete", _salva_rete, 0, 24))
 	if io >= 0 and not g.finita:
 		v.add_child(UI.button("Proponi il pareggio", _menu_pareggio, 0, 24))
+	v.add_child(UI.button("Mappa: %s" % ("tabellone originale" if DPMap.reale else "ridisegnata in italiano"), _menu_mappa, 0, 22))
 	v.add_child(UI.button("Pedine: %s" % ("classiche (cannone e corazzata)" if board.classiche else "del modulo (carro e nave)"), _menu_pedine, 0, 22))
 	v.add_child(UI.button("Animazioni: %s" % ("veloci" if board.velocita > 1.5 else "normali"), _menu_velocita, 0, 22))
 	if ses.online and ses.ruolo == "host":
@@ -902,6 +904,12 @@ func _menu_pedine() -> void:
 	board.mostra(board.st, g.ritirate if storico_idx < 0 else [])
 	_ridisegna_ordini()
 	_menu()
+
+
+## Cambia carta: il tabellone originale o la mappa ridisegnata. La vista si ricostruisce.
+func _menu_mappa() -> void:
+	DPMap.salva_preferenza(not DPMap.reale)
+	main.start_game(ses)
 
 
 func _menu_velocita() -> void:

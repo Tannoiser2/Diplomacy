@@ -25,6 +25,11 @@ const COLORI := [Color("#b8322c"), Color("#2b4a9c"), Color("#4f9fd0"), Color("#4
 const COLORI_TESTO := [Color("#ff8a80"), Color("#8fb0ff"), Color("#9fd6ff"), Color("#c9c9d2"), Color("#8fe090"), Color("#ffffff"), Color("#ffd75a")]
 
 static var pronta := false
+## false = la mappa ridisegnata in italiano, true = il tabellone originale steso sul rilievo.
+## Cambia soltanto dove stanno le cose sulla carta (pedine, stelle, misure), non le regole.
+static var reale := false
+static var _posizioni := {}             # per genere di mappa: {larghezza, altezza, pedina, stella, etichetta}
+const FILE_OPZIONI := "user://diplomacy_opzioni.cfg"
 static var larghezza := 1835.0
 static var altezza := 1360.0
 static var sigla: Array = []            # per loc
@@ -134,7 +139,48 @@ static func ensure() -> void:
 	dist_a = _distanze(adj_a)
 	dist_f = _distanze(adj_fp)
 	dist_q = _distanze(adj_tutte)
+	_posizioni[false] = {"larghezza": larghezza, "altezza": altezza, "pedina": pos_pedina.duplicate(),
+		"stella": pos_stella.duplicate(), "etichetta": pos_etichetta.duplicate()}
 	pronta = true
+
+
+## Sceglie su quale carta si gioca: quella ridisegnata o il tabellone originale.
+static func usa(r: bool) -> void:
+	ensure()
+	if not _posizioni.has(r):
+		var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/mappa_reale.json"))
+		var pp := []
+		for v in d["pedina"]:
+			pp.append(Vector2(v[0], v[1]))
+		var ss := []
+		var ee := []
+		for i in N_PROV:
+			var v = d["stella"][i]
+			ss.append(Vector2(v[0], v[1]) if v != null else pp[i])
+			ee.append(Vector2(d["etichetta"][i][0], d["etichetta"][i][1]))
+		_posizioni[r] = {"larghezza": float(d["larghezza"]), "altezza": float(d["altezza"]), "pedina": pp, "stella": ss, "etichetta": ee}
+	var q: Dictionary = _posizioni[r]
+	reale = r
+	larghezza = q["larghezza"]
+	altezza = q["altezza"]
+	pos_pedina = q["pedina"]
+	pos_stella = q["stella"]
+	pos_etichetta = q["etichetta"]
+
+
+## La carta preferita dal giocatore (ricordata sul suo dispositivo): di norma il tabellone originale.
+static func preferenza() -> bool:
+	var c := ConfigFile.new()
+	if c.load(FILE_OPZIONI) != OK:
+		return true
+	return bool(c.get_value("mappa", "reale", true))
+
+
+static func salva_preferenza(r: bool) -> void:
+	var c := ConfigFile.new()
+	c.load(FILE_OPZIONI)
+	c.set_value("mappa", "reale", r)
+	c.save(FILE_OPZIONI)
 
 
 static func _ints(a: Array) -> PackedInt32Array:

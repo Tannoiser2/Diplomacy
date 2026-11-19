@@ -134,6 +134,7 @@ func _pannello_nuova() -> void:
 		nomi.append(d[0])
 	destra.add_child(_scelta("Durata", nomi, durata, func(i: int): durata = i))
 	destra.add_child(_scelta("Pedine", ["Classiche: cannone e corazzata", "Del modulo: carro e nave"], 0 if classiche else 1, func(i: int): classiche = i == 0))
+	destra.add_child(_scelta("Mappa", ["Tabellone originale", "Ridisegnata in italiano"], 0 if DPMap.preferenza() else 1, func(i: int): DPMap.salva_preferenza(i == 0)))
 	destra.add_child(UI.spacer(0, 0, true))
 	destra.add_child(UI.primary("Comincia", _comincia, 0, 28))
 
