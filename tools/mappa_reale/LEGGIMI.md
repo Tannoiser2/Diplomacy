@@ -12,6 +12,12 @@ Sono strumenti di lavoro: i percorsi in testa ai file vanno adattati alla propri
 4. `finale.py` – posizioni di pedine e coste, mappa dei tocchi (R provincia, G terra, B distanza dalla
    riva, A distanza dal confine) e quote del rilievo.
 
+5. `scritte.py` – toglie dalla stampa i nomi inglesi e ci scrive quelli italiani dell'interfaccia, nello stesso
+   stile (maiuscoletto per le terre, corsivo per i mari, maiuscolo spaziato per le potenze, targhette sulla
+   cornice). `etichette.py` elenca ogni scritta: posizione, stile, testo inglese da cancellare e testo italiano.
+   Va lanciato dopo `finale.py`, perché riscrive `base.jpg`:
+   `python3 scritte.py <scansione> ../../assets/mappa_reale/base.jpg`
+
 I confini interni dei paesi sono approssimati di qualche punto: per questo, sul tabellone originale,
 tinte ed evidenziazioni sfumano verso i bordi della provincia. `tests/mappa.gd` controlla che ogni
 pedina e ogni stella cadano nella provincia giusta.
