@@ -649,17 +649,41 @@ func _seleziona(u: int) -> void:
 
 
 ## Province in cui un'armata può sbarcare per convoglio: quelle raggiungibili con una catena di flotte in mare.
-func sbarchi(u: int) -> PackedInt32Array:
+## Dove l'armata u può sbarcare per convoglio. Con flotta >= 0: solo con una catena di flotte che
+## comprende quella flotta (è ciò che serve per ordinarle di convogliare).
+func sbarchi(u: int, flotta := -1) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	var st := g.st
 	if st.ut[u] != 0 or DPMap.tipo[u] != DPMap.COSTA:
 		return out
 	var visto := {}
 	var coda := []
-	for f in DPMap.adj_fp[u]:
-		if DPMap.tipo[f] == DPMap.MARE and st.up[f] >= 0 and st.ut[f] == 1:
-			visto[f] = true
-			coda.append(f)
+	if flotta >= 0:
+		# la catena parte dalla flotta scelta e deve arrivare a toccare la costa dell'armata
+		if DPMap.tipo[flotta] != DPMap.MARE or st.up[flotta] < 0 or st.ut[flotta] != 1:
+			return out
+		visto[flotta] = true
+		coda.append(flotta)
+		var h0 := 0
+		while h0 < coda.size():
+			var f0: int = coda[h0]
+			h0 += 1
+			for x in DPMap.adj_fp[f0]:
+				if DPMap.tipo[x] == DPMap.MARE and st.up[x] >= 0 and st.ut[x] == 1 and not visto.has(x):
+					visto[x] = true
+					coda.append(x)
+		var tocca := false
+		for f0 in coda:
+			if DPMap.adj_fp[f0].has(u):
+				tocca = true
+				break
+		if not tocca:
+			return out
+	else:
+		for f in DPMap.adj_fp[u]:
+			if DPMap.tipo[f] == DPMap.MARE and st.up[f] >= 0 and st.ut[f] == 1:
+				visto[f] = true
+				coda.append(f)
 	var h := 0
 	while h < coda.size():
 		var f: int = coda[h]
@@ -696,10 +720,10 @@ func _evidenzia() -> void:
 					d[x] = C_SOST
 			"conv1":
 				for u in DPMap.N_PROV:
-					if st.up[u] >= 0 and st.ut[u] == 0 and DPMap.tipo[u] == DPMap.COSTA and not sbarchi(u).is_empty():
+					if st.up[u] >= 0 and st.ut[u] == 0 and DPMap.tipo[u] == DPMap.COSTA and not sbarchi(u, sel).is_empty():
 						d[u] = C_MARE
 			"conv2":
-				for x in sbarchi(conv_armata):
+				for x in sbarchi(conv_armata, sel):
 					d[x] = C_MARE
 	elif posso_ordinare() and g.e_ritirata():
 		for r in g.ritirate_di(io):
@@ -790,13 +814,13 @@ func _su_tocco(prov: int, su_unita: bool) -> void:
 				_evidenzia()
 				_aggiorna_attrezzi()
 		"conv1":
-			if st.up[prov] >= 0 and st.ut[prov] == 0 and not sbarchi(prov).is_empty():
+			if st.up[prov] >= 0 and st.ut[prov] == 0 and not sbarchi(prov, sel).is_empty():
 				conv_armata = prov
 				modo = "conv2"
 				_evidenzia()
 				_aggiorna_attrezzi()
 		"conv2":
-			if sbarchi(conv_armata).has(prov):
+			if sbarchi(conv_armata, sel).has(prov):
 				_ordina(sel, [DPAdj.C, conv_armata, prov])
 
 

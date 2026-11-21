@@ -38,6 +38,8 @@ func _run() -> void:
 	st.metti(2, 0, P("BUR"))
 	st.metti(3, 0, P("MUN"))
 	st.metti(3, 0, P("RUH"))
+	st.metti(6, 0, P("SMY"))
+	st.metti(6, 1, P("AEG"))
 	for c in DPMap.centri:
 		st.sc[c] = DPMap.casa_centro[c]
 	ses.g.st = st
@@ -67,9 +69,16 @@ func _run() -> void:
 	_verifica(v.sbarchi(P("LON")).has(P("BEL")), "il Belgio è fra gli sbarchi possibili")
 	v._su_tocco(P("BEL"), false)
 	_verifica(v.ordini[P("LON")] == [DPAdj.M, P("BEL"), 1], "A Lon - Bel via convoglio: %s" % str(v.ordini[P("LON")]))
+	# 2b. una flotta convoglia solo armate raggiungibili con una catena di flotte che la comprende
+	_verifica(not v.sbarchi(P("SMY")).is_empty(), "Smirne è convogliabile dalla flotta nell'Egeo")
+	_verifica(v.sbarchi(P("SMY"), P("NTH")).is_empty(), "il Mare del Nord non può convogliare l'armata di Smirne")
+	_verifica(v.sbarchi(P("LON"), P("MAO")).is_empty(), "il Medio Atlantico non può convogliare l'armata di Londra")
+	_verifica(v.sbarchi(P("LON"), P("NTH")).has(P("BEL")), "il Mare del Nord convoglia Londra in Belgio")
 	# 3. convoglio: F Nth C A Lon - Bel
 	v._su_tocco(P("NTH"), true)
 	v._modo("conv1")
+	v._su_tocco(P("SMY"), true)
+	_verifica(v.modo == "conv1", "l'armata di Smirne non si può scegliere per il convoglio del Mare del Nord")
 	v._su_tocco(P("LON"), true)
 	_verifica(v.modo == "conv2", "scelta dell'armata da convogliare")
 	v._su_tocco(P("BEL"), false)
